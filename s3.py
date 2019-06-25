@@ -106,7 +106,7 @@ class s3(tion):
     return self._decode_response(response)
 
   def set(self, mac: str, request: dict):
-    self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
+    self._connect(mac)
     self.notify.read()
     self.write.write(self._encode_request(mac, request))
     self._btle.disconnect()
