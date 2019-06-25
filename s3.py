@@ -8,7 +8,6 @@ from bluepy import btle
 class s3(tion):
   uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
   characteristic = None
-  getDataCommand = bytearray([61, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90])
   statuses = [ 'off', 'on' ]
   command_prefix = 61
   command_suffix = 90
