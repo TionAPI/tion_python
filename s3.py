@@ -1,36 +1,45 @@
-from . import tion
+if __package__ == "":
+  from tion import tion
+else:
+  from . import tion
+
 from bluepy import btle
 
 class s3(tion):
+  uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+  characteristic = None
   getDataCommand = bytearray([61, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90])
   statuses = [ 'off', 'on' ]
+  command_prefix = 61
   command_suffix = 90
 
   command_PAIR = 5
   command_REQUEST_PARAMS = 1
   command_SET_PARAMS = 2
 
-  topic_NOTIFY = 0xb3
-  topic_WRITE_NO_RESPONSE = 61
-
   _btle = btle.Peripheral(None)
 
-  def create_command(self, topic: int, command: int) -> bytearray:
-    return bytearray([topic, command, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, self.command_suffix])
+  def pair(self, mac: str):
+    self._btle_connect(mac)
+    self._btle_send_command(self._get_pair_command())
+    self._btle_disconnect()
+
+  def create_command(self, command: int) -> bytearray:
+    command_special = 1 if command == self.command_PAIR else 0
+    return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, self.command_suffix])
 
   def _get_pair_command(self) -> bytearray:
-    return self.create_command(self.topic_WRITE_NO_RESPONSE, self.command_PAIR)
+    return self.create_command(self.command_PAIR)
   
   def _get_status_command(self) -> bytearray:
     return self.create_command(self.topic_WRITE_NO_RESPONSE, self.command_REQUEST_PARAMS)
 
-  def _btle_send_command(self, command: bytearray): None
-    topic = command.pop(0)
-    self._btle.writeCharacteristic(topic, command)
+  def _btle_send_command(self, command: bytearray) -> None:
+    self.characteristic.write(bytes(command))
 
   def _btle_connect(self, mac):
     self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
-    self._btle_send_command(self._get_pair_command())
+    self.characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
 
   def _btle_disconnect(self):
      self._btle.disconnect()
@@ -42,7 +51,6 @@ class s3(tion):
     except IndexError:
       result = 'outside'
     return result
-
   
   def _process_status(self, code: int) -> str:
     try:
