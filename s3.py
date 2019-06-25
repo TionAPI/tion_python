@@ -20,9 +20,10 @@ class s3(tion):
   _btle = btle.Peripheral(None)
 
   def pair(self, mac: str):
-    self._btle_connect(mac)
-    self._btle_send_command(self._get_pair_command())
-    self._btle_disconnect()
+    self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
+    characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
+    characteristic.write(bytes(self._get_pair_command()))
+    self._btle.disconnect()
 
   def create_command(self, command: int) -> bytearray:
     command_special = 1 if command == self.command_PAIR else 0
@@ -32,17 +33,7 @@ class s3(tion):
     return self.create_command(self.command_PAIR)
   
   def _get_status_command(self) -> bytearray:
-    return self.create_command(self.topic_WRITE_NO_RESPONSE, self.command_REQUEST_PARAMS)
-
-  def _btle_send_command(self, command: bytearray) -> None:
-    self.characteristic.write(bytes(command))
-
-  def _btle_connect(self, mac):
-    self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
-    self.characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
-
-  def _btle_disconnect(self):
-     self._btle.disconnect()
+    return self.create_command(self.command_REQUEST_PARAMS)
 
   def _process_mode(self, mode_code: int) -> str:
     modes = [ 'recuperation', 'mied' ]
@@ -58,13 +49,6 @@ class s3(tion):
     except IndexError:
       result = 'unknown'
     return result
-
-  def _send_request(self, mac: str, request: bytearray) -> bytearray:
-    self._btle_connect(mac)
-    self._btle_send_command(request)
-    self._btle_disconnect()
-    return self._btle.readCharacteristic(self.topic_NOTIFY)
-    return bytearray([0xB3, 0x10, 0x26, 0x0F, 0x02, 0x00, 0x17, 0x17, 0x17, 0x60, 0x01, 0x17, 0x32, 0x00, 0x8C, 0x03, 0x00, 0x33, 0x00, 0x5A])
 
   def _decode_response(self, response: bytearray) -> dict:
     return {
@@ -82,4 +66,8 @@ class s3(tion):
     }
 
   def get(self, mac: str) -> dict:
-    return self._decode_response(self._send_request(mac, self.create_command(self.topic_WRITE_NO_RESPONSE, self.command_REQUEST_PARAMS)))
+    response = ""
+    self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
+    response =  self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
+    self._btle.disconnect()
+    return self._decode_response(response)
