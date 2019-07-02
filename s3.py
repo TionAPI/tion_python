@@ -13,7 +13,7 @@ class s3(tion):
   write = None
   notify = None
   statuses = [ 'off', 'on' ]
-  modes = [ 'recuperation', 'mied' ]
+  modes = [ 'recirculation', 'mixed' ]
 
   command_prefix = 61
   command_suffix = 90
