@@ -63,6 +63,13 @@ class s3(tion):
     return result
 
   def _encode_request(self, mac: str, request: dict) -> bytearray:
+    try:
+      if request["fan_speed"] == 0:
+        del request["fan_speed"]
+        reqest["status"] = "off"
+    except KeyError:
+      pass
+
     settings = {**self.get(mac, False), **request}
     new_settings = self.create_command(self.command_SET_PARAMS)
     new_settings[2] = settings["fan_speed"]
