@@ -87,6 +87,7 @@ class s3(tion):
       "fan_speed": int(list("{:02x}".format(response[2]))[1]),
       "heater_temp": response[3],
       "in_temp": response[8],
+      "out_temp": response[7],
       "filter_remain": response[10]*256 + response[9],
       "time": "{}:{}".format(response[11],response[12]),
       "request_error_code": response[13],
