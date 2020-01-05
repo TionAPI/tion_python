@@ -14,6 +14,7 @@ class s3(tion):
   notify = None
   statuses = [ 'off', 'on' ]
   modes = [ 'recirculation', 'mixed' ]
+  _btle = None
 
   command_prefix = 61
   command_suffix = 90
@@ -21,8 +22,9 @@ class s3(tion):
   command_PAIR = 5
   command_REQUEST_PARAMS = 1
   command_SET_PARAMS = 2
-
-  _btle = btle.Peripheral(None)
+  
+  def __init__(self):
+    self._btle = btle.Peripheral(None)
 
   def pair(self, mac: str):
     self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
