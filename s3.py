@@ -79,20 +79,29 @@ class s3(tion):
     return new_settings
 
   def _decode_response(self, response: bytearray) -> dict:
-    return {
-      "heater": self._process_status(response[4] & 1),
-      "status": self._process_status(response[4] >> 1 & 1),
-      "sound": self._process_status(response[4] >> 3 & 1),
-      "mode": self._process_mode(int(list("{:02x}".format(response[2]))[0])),
-      "fan_speed": int(list("{:02x}".format(response[2]))[1]),
-      "heater_temp": response[3],
-      "in_temp": response[8],
-      "out_temp": response[7],
-      "filter_remain": response[10]*256 + response[9],
-      "time": "{}:{}".format(response[11],response[12]),
-      "request_error_code": response[13],
-      "fw_version": "{:02x}{:02x}".format(response[16],response[17])
-    }
+    try:
+      result = {
+        "code": 200,
+        "heater": self._process_status(response[4] & 1),
+        "status": self._process_status(response[4] >> 1 & 1),
+        "sound": self._process_status(response[4] >> 3 & 1),
+        "mode": self._process_mode(int(list("{:02x}".format(response[2]))[0])),
+        "fan_speed": int(list("{:02x}".format(response[2]))[1]),
+        "heater_temp": response[3],
+        "in_temp": response[8],
+        "out_temp": response[7],
+        "filter_remain": response[10]*256 + response[9],
+        "time": "{}:{}".format(response[11],response[12]),
+        "request_error_code": response[13],
+        "fw_version": "{:02x}{:02x}".format(response[16],response[17])
+      }
+    except IndexError as e:
+      result = {
+        "code": 400,
+        "error": "Got bad response from Tion '%s': %s while parsing" % (response, str(e))
+      }
+    finally:
+      return result
 
   def _connect(self, mac: str,  new_connection = True):
     if new_connection:
