@@ -41,3 +41,18 @@ class tion:
       dictionay with device paramters
     """
     pass
+
+  def decode_temperature(self, raw: bytes) -> int:
+    """ Converts temperature from bytes with addition code to int
+    Args:
+      raw: raw temperature value from Tion
+    Returns:
+      Integer value for temperature
+    """
+    barrier = 0b10000000
+    if (raw < barrier):
+      result = raw
+    else:
+      result = -(~(result - barrier) + barrier + 1)
+
+    return result
