@@ -66,6 +66,8 @@ class s3(tion):
                 if tc.uuid == self.uuid_write:
                     self.write = tc
 
+        self.notify.read()
+
     def get(self, keep_connection=False) -> dict:
         def get_status_command() -> bytearray:
             return self.create_command(self.command_REQUEST_PARAMS)
@@ -103,8 +105,6 @@ class s3(tion):
                 return result
 
         self._connect()  # new_connection processed inside
-
-        self.notify.read()
         self.write.write(get_status_command())
         byte_response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
 
@@ -138,6 +138,5 @@ class s3(tion):
             return new_settings
 
         self._connect()
-        self.notify.read()
         self.write.write(encode_request(request))
         self._btle.disconnect()
