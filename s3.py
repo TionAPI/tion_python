@@ -24,11 +24,16 @@ class s3(tion):
     command_REQUEST_PARAMS = 1
     command_SET_PARAMS = 2
 
-    def __init__(self):
+    def __init__(self, mac: str):
         self._btle = btle.Peripheral(None)
+        self._mac = mac
 
-    def pair(self, mac: str):
-        self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
+    @property
+    def mac(self):
+        return self.mac
+
+    def pair(self):
+        self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
         characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
         characteristic.write(bytes(self._get_pair_command()))
         self._btle.disconnect()
@@ -64,7 +69,7 @@ class s3(tion):
             result = 'unknown'
         return result
 
-    def _encode_request(self, mac: str, request: dict) -> bytearray:
+    def _encode_request(self, request: dict) -> bytearray:
         try:
             if request["fan_speed"] == 0:
                 del request["fan_speed"]
@@ -72,7 +77,7 @@ class s3(tion):
         except KeyError:
             pass
 
-        settings = {**self.get(mac, False), **request}
+        settings = {**self.get(False), **request}
         new_settings = self.create_command(self.command_SET_PARAMS)
         new_settings[2] = settings["fan_speed"]
         new_settings[3] = settings["heater_temp"]
@@ -96,18 +101,18 @@ class s3(tion):
         finally:
             return result
 
-    def _connect(self, mac: str, new_connection=True):
+    def _connect(self, new_connection=True):
         if new_connection:
-            self._btle.connect(mac, btle.ADDR_TYPE_RANDOM)
+            self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
             for tc in self._btle.getCharacteristics():
                 if tc.uuid == self.uuid_notify:
                     self.notify = tc
                 if tc.uuid == self.uuid_write:
                     self.write = tc
 
-    def get(self, mac: str, new_connection=True) -> dict:
+    def get(self, new_connection=True) -> dict:
         response = ""
-        self._connect(mac, new_connection)  # new_connection processed inside
+        self._connect(new_connection)  # new_connection processed inside
 
         self.notify.read()
         self.write.write(self._get_status_command())
@@ -117,8 +122,8 @@ class s3(tion):
             self._btle.disconnect()
         return self._decode_response(response)
 
-    def set(self, mac: str, request: dict):
-        self._connect(mac)
+    def set(self, request: dict):
+        self._connect()
         self.notify.read()
-        self.write.write(self._encode_request(mac, request))
+        self.write.write(self._encode_request(request))
         self._btle.disconnect()
