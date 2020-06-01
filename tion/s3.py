@@ -161,7 +161,7 @@ class s3(tion):
 
         return decode_response(byte_response)
 
-    def set(self, request: dict):
+    def set(self, request: dict, keep_connection=False):
         def encode_request(request: dict) -> bytearray:
             def encode_mode(mode: str) -> int:
                 return self.modes.index(mode) if mode in self.modes else 2
@@ -190,4 +190,5 @@ class s3(tion):
         except TionException as e:
             _LOGGER.error(str(e))
         finally:
-            self._btle.disconnect()
+            if not keep_connection:
+                self._btle.disconnect()
