@@ -1,3 +1,6 @@
+import logging
+from typing import Callable
+
 if __package__ == "":
     from tion import tion
 else:
@@ -5,6 +8,14 @@ else:
 
 from bluepy import btle
 import time
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class TionException(Exception):
+    def __init__(self, expression, message):
+        self.expression = expression
+        self.message = message
 
 
 class s3(tion):
@@ -31,6 +42,40 @@ class s3(tion):
     @property
     def mac(self):
         return self.mac
+
+    def __try_write(self, request: bytearray):
+        return self.write.write(request)
+
+    def __try_get_state(self) -> bytearray:
+        return self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
+
+    def _do_action(self, action: Callable, max_tries: int = 3, *args, **kwargs):
+        tries: int = 0
+        while tries < max_tries:
+            _LOGGER.debug("Doing " + action.__name__ + ". Attempt " + str(tries + 1) + "/" + str(max_tries))
+            try:
+                if action.__name__ != '_connect':
+                    self._connect()
+
+                response = action(*args, **kwargs)
+                break
+            except Exception as e:
+                tries += 1
+                _LOGGER.warning("Got exception while " + action.__name__ + ": " + str(e))
+                pass
+        else:
+            if action.__name__ == '_connect':
+                message = "Could not connect to " + self.mac
+            elif action.__name__ == '__try_write':
+                message = "Could not write request + " + kwargs['request'].hex()
+            elif action.__name__ == '__try_get_state':
+                message = "Could not get updated state"
+            else:
+                message = "Could not do " + action.__name__
+
+            raise TionException(action.__name__, message)
+
+        return response
 
     def pair(self):
         def get_pair_command(self) -> bytearray:
@@ -104,12 +149,15 @@ class s3(tion):
             finally:
                 return result
 
-        self._connect()  # new_connection processed inside
-        self.write.write(get_status_command())
-        byte_response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
-
-        if not keep_connection:
-            self._btle.disconnect()
+        try:
+            self._do_action(self._connect)
+            self._do_action(self.__try_write, request=get_status_command())
+            byte_response = self._do_action(self.__try_get_state)
+        except TionException as e:
+            _LOGGER.error(str(e))
+        finally:
+            if not keep_connection:
+                self._btle.disconnect()
 
         return decode_response(byte_response)
 
@@ -136,7 +184,10 @@ class s3(tion):
             new_settings[5] = encode_status(settings["heater"]) | (encode_status(settings["status"]) << 1) | (
                         encode_status(settings["sound"]) << 3)
             return new_settings
-
-        self._connect()
-        self.write.write(encode_request(request))
-        self._btle.disconnect()
+        try:
+            self._do_action(self._connect)
+            self._do_action(self.__try_write, request=encode_request(request))
+        except TionException as e:
+            _LOGGER.error(str(e))
+        finally:
+            self._btle.disconnect()
