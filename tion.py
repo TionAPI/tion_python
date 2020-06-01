@@ -1,5 +1,6 @@
 import abc
 
+
 class tion:
     @abc.abstractmethod
     def _send_request(self, request: bytearray) -> bytearray:
