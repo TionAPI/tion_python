@@ -77,7 +77,7 @@ class s3(tion):
         except KeyError:
             pass
 
-        settings = {**self.get(False), **request}
+        settings = {**self.get(True), **request}
         new_settings = self.create_command(self.command_SET_PARAMS)
         new_settings[2] = settings["fan_speed"]
         new_settings[3] = settings["heater_temp"]
@@ -101,8 +101,19 @@ class s3(tion):
         finally:
             return result
 
-    def _connect(self, new_connection=True):
-        if new_connection:
+    def _connect(self):
+        try:
+            connection_status = self._btle.getState()
+        except btle.BTLEInternalError as e:
+            if str(e) == "Helper not started (did you call connect()?)":
+                connection_status = "disc"
+            else:
+                raise e
+        except BrokenPipeError as e:
+            connection_status = "disc"
+            self._btle = btle.Peripheral(None)
+
+        if connection_status == "disc":
             self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
             for tc in self._btle.getCharacteristics():
                 if tc.uuid == self.uuid_notify:
@@ -110,15 +121,14 @@ class s3(tion):
                 if tc.uuid == self.uuid_write:
                     self.write = tc
 
-    def get(self, new_connection=True) -> dict:
-        response = ""
-        self._connect(new_connection)  # new_connection processed inside
+    def get(self, keep_connection=False) -> dict:
+        self._connect()  # new_connection processed inside
 
         self.notify.read()
         self.write.write(self._get_status_command())
         response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
 
-        if new_connection:
+        if not keep_connection:
             self._btle.disconnect()
         return self._decode_response(response)
 

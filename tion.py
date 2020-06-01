@@ -36,7 +36,7 @@ class tion:
         pass
 
     @abc.abstractmethod
-    def get() -> dict:
+    def get(self, keep_connection: bool = False) -> dict:
         """ Get device information
         Returns:
           dictionay with device paramters
