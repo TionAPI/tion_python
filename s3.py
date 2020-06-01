@@ -41,7 +41,7 @@ class s3(tion):
 
     @property
     def mac(self):
-        return self.mac
+        return self._mac
 
     def __try_write(self, request: bytearray):
         return self.write.write(request)
