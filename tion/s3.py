@@ -65,8 +65,10 @@ class s3(tion):
 
             result = {}
             try:
-                result = {"code": 200, "heater": self._process_status(response[4] & 1),
-                          "status": self._process_status(response[4] >> 1 & 1), "sound": self._process_status(response[4] >> 3 & 1),
+                result = {"code": 200,
+                          "heater": self._process_status(response[4] & 1),
+                          "status": self._process_status(response[4] >> 1 & 1),
+                          "sound": self._process_status(response[4] >> 3 & 1),
                           "mode": process_mode(int(list("{:02x}".format(response[2]))[0])),
                           "fan_speed": int(list("{:02x}".format(response[2]))[1]), "heater_temp": response[3],
                           "in_temp": self.decode_temperature(response[8]),
@@ -74,6 +76,15 @@ class s3(tion):
                           "filter_remain": response[10] * 256 + response[9],
                           "time": "{}:{}".format(response[11], response[12]), "request_error_code": response[13],
                           "fw_version": "{:02x}{:02x}".format(response[16], response[17])}
+
+                if result["heater"] == "off":
+                    result["is_heating"] = "off"
+                else:
+                    if result["in_temp"] < result["heater_temp"] and result["out_temp"] - result["heater_temp"] < 3:
+                        result["is_heating"] = "on"
+                    else:
+                        result["is_heating"] = "off"
+
             except IndexError as e:
                 result = {"code": 400,
                           "error": "Got bad response from Tion '%s': %s while parsing" % (response, str(e))}
@@ -85,14 +96,16 @@ class s3(tion):
             self.notify.read()
             self._do_action(self._try_write, request=get_status_command())
             byte_response = self._do_action(self.__try_get_state)
+            result = decode_response(byte_response)
         except TionException as e:
             _LOGGER.error(str(e))
+            result = {"code": 400, "error": "Got exception " + str(e)}
         finally:
             if not keep_connection:
                 if self.mac != "dummy":
                     self._btle.disconnect()
 
-        return decode_response(byte_response)
+        return result
 
     def set(self, request: dict, keep_connection=False):
         def encode_request(request: dict) -> bytearray:
@@ -125,4 +138,5 @@ class s3(tion):
             _LOGGER.error(str(e))
         finally:
             if not keep_connection:
-                self._btle.disconnect()
+                if self.mac != "dummy":
+                    self._btle.disconnect()
