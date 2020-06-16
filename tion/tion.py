@@ -43,6 +43,7 @@ class tion:
         self._mac = mac
         self._btle: btle.Peripheral = btle.Peripheral(None)
         self._delegation = TionDelegation()
+        self._fan_speed = 0
 
     @abc.abstractmethod
     def _send_request(self, request: bytearray) -> bytearray:
@@ -184,3 +185,18 @@ class tion:
         self._btle.withDelegate(self._delegation)
         self.notify.read()
         return result
+
+    @property
+    def fan_speed(self):
+        return self._fan_speed
+
+    @fan_speed.setter
+    def fan_speed(self, new_speed: int):
+        if 0 <= new_speed <= 6:
+            self._fan_speed = new_speed
+
+        else:
+            _LOGGER.warning("Incorrect new fan speed. Will use 1 instead")
+            self._fan_speed = 1
+
+        # self.set({"fan_speed": new_speed})

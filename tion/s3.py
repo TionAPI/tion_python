@@ -65,9 +65,10 @@ class s3(tion):
 
             result = {}
             try:
+                self.fan_speed = int(list("{:02x}".format(response[2]))[1])
                 result = {"code": 200,
                           "mode": process_mode(int(list("{:02x}".format(response[2]))[0])),
-                          "fan_speed": int(list("{:02x}".format(response[2]))[1]),
+                          "fan_speed": self.fan_speed,
                           "heater_temp": response[3],
                           "heater": self._process_status(response[4] & 1),
                           "status": self._process_status(response[4] >> 1 & 1),
