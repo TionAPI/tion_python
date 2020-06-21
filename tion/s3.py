@@ -9,6 +9,7 @@ else:
 from bluepy import btle
 import time
 
+logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -40,11 +41,19 @@ class s3(tion):
     def pair(self):
         def get_pair_command() -> bytearray:
             return self.create_command(self.command_PAIR)
-
-        self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
+        _LOGGER.setLevel("DEBUG")
+        _LOGGER.debug("Pairing")
+        _LOGGER.debug("Connecting")
+        self._connect()
+        _LOGGER.debug("Collecting characteristic")
         characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
+        _LOGGER.debug("Got characteristic %s for pairing", str(characteristic))
+        pair_command = get_pair_command()
+        _LOGGER.debug("Sending pair command %s to %s", bytes(pair_command).hex(), str(characteristic))
         characteristic.write(bytes(get_pair_command()))
-        self._btle.disconnect()
+        _LOGGER.debug("Disconnecting")
+        self._disconnect()
+        _LOGGER.debug("Done!")
 
     def create_command(self, command: int) -> bytearray:
         command_special = 1 if command == self.command_PAIR else 0
