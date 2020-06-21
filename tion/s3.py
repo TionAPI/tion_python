@@ -44,7 +44,7 @@ class s3(tion):
         _LOGGER.setLevel("DEBUG")
         _LOGGER.debug("Pairing")
         _LOGGER.debug("Connecting")
-        self._connect()
+        self._do_action(self._connect)
         _LOGGER.debug("Collecting characteristic")
         characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
         _LOGGER.debug("Got characteristic %s for pairing", str(characteristic))
