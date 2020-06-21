@@ -81,12 +81,14 @@ class s3(tion):
                           "heater_temp": response[3],
                           "heater": self._process_status(response[4] & 1),
                           "status": self._process_status(response[4] >> 1 & 1),
+                          "timer": self._process_status(response[4] >> 2 & 1),
                           "sound": self._process_status(response[4] >> 3 & 1),
                           "out_temp": self.decode_temperature(response[7]),
                           "in_temp": self.decode_temperature(response[8]),
                           "filter_remain": response[10] * 256 + response[9],
                           "time": "{}:{}".format(response[11], response[12]),
                           "request_error_code": response[13],
+                          "productivity":  response[14],
                           "fw_version": "{:02x}{:02x}".format(response[18], response[17])}
 
                 if result["heater"] == "off":
