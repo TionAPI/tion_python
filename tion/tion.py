@@ -1,5 +1,6 @@
 import abc
 import logging
+import time
 from typing import Callable
 
 from bluepy import btle
