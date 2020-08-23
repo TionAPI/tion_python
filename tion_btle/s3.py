@@ -2,9 +2,9 @@ import logging
 from typing import Callable
 
 if __package__ == "":
-    from tion import tion, TionException
+    from tion_btle.tion import tion, TionException
 else:
-    from . import tion, TionException
+    from .tion import tion, TionException
 
 from bluepy import btle
 import time
