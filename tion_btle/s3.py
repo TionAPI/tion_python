@@ -18,8 +18,6 @@ class s3(tion):
     uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
     uuid_write = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
     uuid_notify = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
-    write = None
-    notify = None
 
     modes = ['recirculation', 'mixed']
     _btle = None
@@ -34,19 +32,14 @@ class s3(tion):
     def __init__(self, mac: str):
         super().__init__(mac)
 
-    def __try_get_state(self) -> bytearray:
-        response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
-        _LOGGER.debug("Response is %s", bytes(response).hex())
-        return response
-
     async def pair(self):
         async def get_pair_command() -> bytearray:
             return await self.create_command(self.command_PAIR)
 
         _LOGGER.setLevel("DEBUG")
         _LOGGER.debug("Going to pair with %s" % self.mac)
+        _LOGGER.debug("Connecting")
         try:
-            _LOGGER.debug("Connecting")
             await self._connect()
             _LOGGER.debug("BT Pairing")
             await self._btle.pair()
@@ -121,19 +114,15 @@ class s3(tion):
                 if i < 10:
                     byte_response = self._delegation.data
                 else:
-                    byte_response = await self._btle.read_gatt_char(
-                        self.uuid_notify
-                    )
-                    msg = "Waiting too long for data. Use data from %s as response" % self.uuid_notify
-                    _LOGGER.warning(msg)
+                    _LOGGER.warning("Waiting data too long. Will use data from uuid_notify (%s)." % self.uuid_notify)
+                    byte_response = await self._btle.read_gatt_char(self.uuid_notify)
                 result = await decode_response(byte_response)
-
             except exc.BleakError as e:
                 _LOGGER.error("Got %s while waiting for notification", str(e))
                 raise TionExceptionGet('get', str(e))
-        except TionException as e:
+        except (exc.BleakError, TionException, TionExceptionGet) as e:
             _LOGGER.error(str(e))
-            raise e
+            raise TionException('get', str(e))
         finally:
             await self._disconnect()
 

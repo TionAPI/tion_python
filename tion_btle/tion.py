@@ -168,7 +168,7 @@ class tion:
         try:
             result = await self._btle.start_notify(self.uuid_notify, self._delegation.handleNotification)
         except bleak.exc.BleakError as e:
-            _LOGGER.critical("Got exception %s while enabling notifications!" % str(e))
+            _LOGGER.warning("Got exception %s while enabling notifications!" % str(e))
             raise e
         return result
 
