@@ -11,7 +11,7 @@ setup(
     version=tion_btle.const.VERSION,
     long_description="Module for working with Tion breezers",
     url='https://github.com/TionAPI/tion_python/tree/dev',
-    install_requires=['bluepy==1.3.0'],
+    install_requires=['bleak==0.9.1'],
     description='Python module for interacting with Tion breezers',
     packages=find_packages(),
 )
