@@ -38,7 +38,7 @@ class TionException(Exception):
 
 class TionExceptionGet(TionException):
     def __init__(self, expression, message):
-        super.__init__(expression, message)
+        super().__init__(expression, message)
 
 
 class tion:
