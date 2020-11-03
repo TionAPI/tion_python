@@ -47,12 +47,12 @@ class s3(tion):
         _LOGGER.debug("Going to pair with %s" % self.mac)
         try:
             _LOGGER.debug("Connecting")
-            await self._do_action(self._connect)
+            await self._connect()
             _LOGGER.debug("BT Pairing")
             await self._btle.pair()
             pair_command = await get_pair_command()
             _LOGGER.debug("Sending pair command %s to %s", bytes(pair_command).hex(), self.uuid_write)
-            await self._do_action(self._try_write, request=pair_command)
+            await self._try_write(request=pair_command)
             _LOGGER.debug("Done!")
         finally:
             _LOGGER.debug("Disconnecting")
@@ -63,7 +63,7 @@ class s3(tion):
         return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           self.command_suffix])
 
-    async def get(self, keep_connection=False) -> dict:
+    async def get(self) -> dict:
         async def get_status_command() -> bytearray:
             return await self.create_command(self.command_REQUEST_PARAMS)
 
@@ -109,9 +109,9 @@ class s3(tion):
                 return result
 
         try:
-            await self._do_action(self._connect)
+            await self._connect()
             await self._enable_notifications()
-            await self._do_action(self._try_write, request=await get_status_command())
+            await self._try_write(request=await get_status_command())
 
             i = 0
             try:
@@ -130,14 +130,11 @@ class s3(tion):
 
             except exc.BleakError as e:
                 _LOGGER.error("Got %s while waiting for notification", str(e))
-                await self._disconnect()
                 raise TionExceptionGet('get', str(e))
         except TionException as e:
             _LOGGER.error(str(e))
-            await self._disconnect()
             raise e
-
-        if not keep_connection:
+        finally:
             await self._disconnect()
 
         return result
@@ -158,7 +155,7 @@ class s3(tion):
                 pass
 
             try:
-                current_settings = await self.get(True)
+                current_settings = await self.get()
             except TionExceptionGet:
                 raise TionException('set', 'Could not get current settings!')
 
@@ -172,14 +169,14 @@ class s3(tion):
                         await encode_status(settings["sound"]) << 3)
             return new_settings
         try:
-            await self._do_action(self._connect)
+            await self._connect()
             try:
                 encoded_request = await encode_request(request)
             except (KeyError, TionException) as e:
                 _LOGGER.warning("Could not create encoded settings command: %s" % str(e))
                 return
 
-            await self._do_action(self._try_write, request=encoded_request)
+            await self._try_write(request=encoded_request)
 
         except TionException as e:
             _LOGGER.error(str(e))

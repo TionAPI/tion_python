@@ -51,6 +51,7 @@ class tion:
         self._btle: BleakClient = BleakClient(self.mac)
         self._delegation = TionDelegation()
         self._fan_speed = 0
+        self._connections: int = 0
 
     @abc.abstractmethod
     async def _send_request(self, request: bytearray) -> bytearray:
@@ -86,7 +87,7 @@ class tion:
         pass
 
     @abc.abstractmethod
-    async def get(self, keep_connection: bool = False) -> dict:
+    async def get(self) -> dict:
         """ Get device information
         Returns:
           dictionay with device paramters
@@ -126,6 +127,7 @@ class tion:
         return status
 
     async def _connect(self):
+        self._connections += 1
         if self.mac == "dummy":
             _LOGGER.info("Dummy connect")
             return
@@ -133,22 +135,21 @@ class tion:
         if await self.connection_status == "disc":
             try:
                 await self._btle.connect()
-                await self._btle.get_services()
             except exc.BleakError as e:
                 _LOGGER.warning("Got %s exception", str(e))
-                time.sleep(2)
+                await asyncio.sleep(2)
                 raise e
         else:
             _LOGGER.debug("Already connected!")
 
     async def _disconnect(self):
-        try:
-            if await self.connection_status != "disc":
-                if self.mac != "dummy":
+        self._connections -= 1
+        if await self.connection_status != "disc":
+            if self.mac != "dummy":
+                if self._connections == 0:
                     await self._btle.disconnect()
-        finally:
-            # re-init client
-            self._btle = BleakClient(self.mac)
+                    # drop _services_resolved flag, that not dropped while disconnect
+                    self._btle._services_resolved = False
 
     async def _try_write(self, request: bytearray):
         if self.mac != "dummy":
@@ -161,34 +162,6 @@ class tion:
         else:
             _LOGGER.info("Dummy write")
             return "dummy write"
-
-    async def _do_action(self, action: Callable, max_tries: int = 3, *args, **kwargs):
-        tries: int = 0
-        while tries < max_tries:
-            _LOGGER.debug("Doing " + action.__name__ + ". Attempt " + str(tries + 1) + "/" + str(max_tries))
-            try:
-                if action.__name__ != '_connect':
-                    await self._connect()
-
-                response = await action(*args, **kwargs)
-                break
-            except Exception as e:
-                tries += 1
-                _LOGGER.warning("Got exception while " + action.__name__ + ": " + str(e))
-                pass
-        else:
-            if action.__name__ == '_connect':
-                message = "Could not connect to " + self.mac
-            elif action.__name__ == '__try_write':
-                message = "Could not write request + " + kwargs['request'].hex()
-            elif action.__name__ == '__try_get_state':
-                message = "Could not get updated state"
-            else:
-                message = "Could not do " + action.__name__
-
-            raise TionException(action.__name__, message)
-
-        return response
 
     async def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
