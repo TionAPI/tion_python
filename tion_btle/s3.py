@@ -40,22 +40,23 @@ class s3(tion):
         return response
 
     async def pair(self):
-        raise NotImplementedError()
-        def get_pair_command() -> bytearray:
-            return self.create_command(self.command_PAIR)
+        async def get_pair_command() -> bytearray:
+            return await self.create_command(self.command_PAIR)
+
         _LOGGER.setLevel("DEBUG")
-        _LOGGER.debug("Pairing")
-        _LOGGER.debug("Connecting")
-        self._do_action(self._connect)
-        _LOGGER.debug("Collecting characteristic")
-        characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
-        _LOGGER.debug("Got characteristic %s for pairing", str(characteristic))
-        pair_command = get_pair_command()
-        _LOGGER.debug("Sending pair command %s to %s", bytes(pair_command).hex(), str(characteristic))
-        characteristic.write(bytes(get_pair_command()))
-        _LOGGER.debug("Disconnecting")
-        self._disconnect()
-        _LOGGER.debug("Done!")
+        _LOGGER.debug("Going to pair with %s" % self.mac)
+        try:
+            _LOGGER.debug("Connecting")
+            await self._do_action(self._connect)
+            _LOGGER.debug("BT Pairing")
+            await self._btle.pair()
+            pair_command = await get_pair_command()
+            _LOGGER.debug("Sending pair command %s to %s", bytes(pair_command).hex(), self.uuid_write)
+            await self._do_action(self._try_write, request=pair_command)
+            _LOGGER.debug("Done!")
+        finally:
+            _LOGGER.debug("Disconnecting")
+            await self._disconnect()
 
     async def create_command(self, command: int) -> bytearray:
         command_special = 1 if command == self.command_PAIR else 0
