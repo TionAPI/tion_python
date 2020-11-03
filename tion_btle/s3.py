@@ -107,6 +107,8 @@ class s3(tion):
             finally:
                 return result
 
+        result: dict = {}
+
         try:
             await self._do_action(self._connect)
             await self._enable_notifications()
@@ -133,19 +135,19 @@ class s3(tion):
         except TionException as e:
             _LOGGER.error(str(e))
             result = {"code": 400, "error": "Got exception " + str(e)}
-        finally:
+            await self._disconnect()
+
+        if not keep_connection:
             await self._disconnect()
 
         return result
 
-    def set(self, request: dict, keep_connection=False):
-        raise NotImplementedError()
-
-        def encode_request(request: dict) -> bytearray:
-            def encode_mode(mode: str) -> int:
+    async def set(self, request: dict, keep_connection=False):
+        async def encode_request(request: dict) -> bytearray:
+            async def encode_mode(mode: str) -> int:
                 return self.modes.index(mode) if mode in self.modes else 2
 
-            def encode_status(status: str) -> int:
+            async def encode_status(status: str) -> int:
                 return self.statuses.index(status) if status in self.statuses else 0
 
             try:
@@ -155,18 +157,20 @@ class s3(tion):
             except KeyError:
                 pass
 
-            settings = {**self.get(True), **request}
-            new_settings = self.create_command(self.command_SET_PARAMS)
+            current_settings = await self.get(True)
+            _LOGGER.debug("set: got '%s' settings" % current_settings)
+            settings = {**current_settings, **request}
+            new_settings = await self.create_command(self.command_SET_PARAMS)
             new_settings[2] = int(settings["fan_speed"])
             new_settings[3] = int(settings["heater_temp"])
-            new_settings[4] = encode_mode(settings["mode"])
-            new_settings[5] = encode_status(settings["heater"]) | (encode_status(settings["status"]) << 1) | (
-                        encode_status(settings["sound"]) << 3)
+            new_settings[4] = await encode_mode(settings["mode"])
+            new_settings[5] = await encode_status(settings["heater"]) | (await encode_status(settings["status"]) << 1) | (
+                        await encode_status(settings["sound"]) << 3)
             return new_settings
         try:
-            self._do_action(self._connect)
-            self._do_action(self._try_write, request=encode_request(request))
+            await self._do_action(self._connect)
+            await self._do_action(self._try_write, request=await encode_request(request))
         except TionException as e:
             _LOGGER.error(str(e))
         finally:
-            self._disconnect()
+            await self._disconnect()

@@ -1,6 +1,7 @@
 import abc
 import logging
 import time
+import bleak
 import asyncio
 from typing import Callable
 from bleak import BleakClient
@@ -47,7 +48,7 @@ class tion:
         self._fan_speed = 0
 
     @abc.abstractmethod
-    def _send_request(self, request: bytearray) -> bytearray:
+    async def _send_request(self, request: bytearray) -> bytearray:
         """ Send request to device
 
         Args:
@@ -69,7 +70,7 @@ class tion:
         pass
 
     @abc.abstractmethod
-    def _encode_request(self, request: dict) -> bytearray:
+    async def _encode_request(self, request: dict) -> bytearray:
         """ Encode dictionary of request to byte array
 
         Args:
@@ -80,7 +81,7 @@ class tion:
         pass
 
     @abc.abstractmethod
-    def get(self, keep_connection: bool = False) -> dict:
+    async def get(self, keep_connection: bool = False) -> dict:
         """ Get device information
         Returns:
           dictionay with device paramters
@@ -115,7 +116,9 @@ class tion:
 
     @property
     async def connection_status(self):
-        return "connected" if await self._btle.is_connected() else "disc"
+        status = "connected" if await self._btle.is_connected() else "disc"
+        _LOGGER.debug("connection_status is %s" % status)
+        return status
 
     async def _connect(self):
         if self.mac == "dummy":
@@ -125,15 +128,22 @@ class tion:
         if await self.connection_status == "disc":
             try:
                 await self._btle.connect()
+                await self._btle.get_services()
             except exc.BleakError as e:
                 _LOGGER.warning("Got %s exception", str(e))
                 time.sleep(2)
                 raise e
+        else:
+            _LOGGER.debug("Already connected!")
 
     async def _disconnect(self):
-        if await self.connection_status != "disc":
-            if self.mac != "dummy":
-                await self._btle.disconnect()
+        try:
+            if await self.connection_status != "disc":
+                if self.mac != "dummy":
+                    await self._btle.disconnect()
+        finally:
+            # re-init client
+            self._btle = BleakClient(self.mac)
 
     async def _try_write(self, request: bytearray):
         if self.mac != "dummy":
@@ -177,7 +187,12 @@ class tion:
 
     async def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
-        return await self._btle.start_notify(self.uuid_notify, self._delegation.handleNotification)
+        try:
+            result = await self._btle.start_notify(self.uuid_notify, self._delegation.handleNotification)
+        except bleak.exc.BleakError as e:
+            _LOGGER.critical("Got exception %s while enabling notifications!" % str(e))
+            raise e
+        return result
 
     @property
     def fan_speed(self):
