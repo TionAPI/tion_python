@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from bleak import exc
 from typing import Callable
 
 if __package__ == "":
@@ -6,7 +8,6 @@ if __package__ == "":
 else:
     from .tion import tion, TionException
 
-from bluepy import btle
 import time
 
 logging.basicConfig(level=logging.DEBUG)
@@ -38,7 +39,8 @@ class s3(tion):
         _LOGGER.debug("Response is %s", bytes(response).hex())
         return response
 
-    def pair(self):
+    async def pair(self):
+        raise NotImplementedError()
         def get_pair_command() -> bytearray:
             return self.create_command(self.command_PAIR)
         _LOGGER.setLevel("DEBUG")
@@ -55,17 +57,17 @@ class s3(tion):
         self._disconnect()
         _LOGGER.debug("Done!")
 
-    def create_command(self, command: int) -> bytearray:
+    async def create_command(self, command: int) -> bytearray:
         command_special = 1 if command == self.command_PAIR else 0
         return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           self.command_suffix])
 
-    def get(self, keep_connection=False) -> dict:
-        def get_status_command() -> bytearray:
-            return self.create_command(self.command_REQUEST_PARAMS)
+    async def get(self, keep_connection=False) -> dict:
+        async def get_status_command() -> bytearray:
+            return await self.create_command(self.command_REQUEST_PARAMS)
 
-        def decode_response(response: bytearray) -> dict:
-            def process_mode(mode_code: int) -> str:
+        async def decode_response(response: bytearray) -> dict:
+            async def process_mode(mode_code: int) -> str:
                 try:
                     mode = self.modes[mode_code]
                 except IndexError:
@@ -76,15 +78,15 @@ class s3(tion):
             try:
                 self.fan_speed = int(list("{:02x}".format(response[2]))[1])
                 result = {"code": 200,
-                          "mode": process_mode(int(list("{:02x}".format(response[2]))[0])),
+                          "mode": await process_mode(int(list("{:02x}".format(response[2]))[0])),
                           "fan_speed": self.fan_speed,
                           "heater_temp": response[3],
-                          "heater": self._process_status(response[4] & 1),
-                          "status": self._process_status(response[4] >> 1 & 1),
-                          "timer": self._process_status(response[4] >> 2 & 1),
-                          "sound": self._process_status(response[4] >> 3 & 1),
-                          "out_temp": self.decode_temperature(response[7]),
-                          "in_temp": self.decode_temperature(response[8]),
+                          "heater": await self._process_status(response[4] & 1),
+                          "status": await self._process_status(response[4] >> 1 & 1),
+                          "timer": await self._process_status(response[4] >> 2 & 1),
+                          "sound": await self._process_status(response[4] >> 3 & 1),
+                          "out_temp": await self.decode_temperature(response[7]),
+                          "in_temp": await self.decode_temperature(response[8]),
                           "filter_remain": response[10] * 256 + response[9],
                           "time": "{}:{}".format(response[11], response[12]),
                           "request_error_code": response[13],
@@ -106,34 +108,39 @@ class s3(tion):
                 return result
 
         try:
-            self._do_action(self._connect)
-            self._enable_notifications()
-            self._do_action(self._try_write, request=get_status_command())
+            await self._do_action(self._connect)
+            await self._enable_notifications()
+            await self._do_action(self._try_write, request=await get_status_command())
 
             i = 0
             try:
-                while i < 10:
-                    if self._btle.waitForNotifications(1.0):
-                        byte_response = self._delegation.data
-                        result = decode_response(byte_response)
-                        break
+                while i < 10 and not self._delegation.have_new_data:
+                    await asyncio.sleep(1)
                     i += 1
+                if i < 10:
+                    byte_response = self._delegation.data
                 else:
-                    _LOGGER.debug("Waiting too long for data")
-                    self.notify.read()
-            except btle.BTLEDisconnectError as e:
-                _LOGGER.debug("Got %s while waiting for notification", str(e))
-                self._disconnect()
+                    byte_response = await self._btle.read_gatt_char(
+                        self.uuid_notify
+                    )
+                    msg = "Waiting too long for data. Use data from %s as response" % self.uuid_notify
+                    _LOGGER.warning(msg)
+                result = await decode_response(byte_response)
 
+            except exc.BleakError as e:
+                _LOGGER.debug("Got %s while waiting for notification", str(e))
+                await self._disconnect()
         except TionException as e:
             _LOGGER.error(str(e))
             result = {"code": 400, "error": "Got exception " + str(e)}
         finally:
-            self._disconnect()
+            await self._disconnect()
 
         return result
 
     def set(self, request: dict, keep_connection=False):
+        raise NotImplementedError()
+
         def encode_request(request: dict) -> bytearray:
             def encode_mode(mode: str) -> int:
                 return self.modes.index(mode) if mode in self.modes else 2

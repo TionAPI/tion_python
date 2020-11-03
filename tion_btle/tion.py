@@ -1,32 +1,32 @@
 import abc
 import logging
 import time
+import asyncio
 from typing import Callable
-
-from bluepy import btle
-from bluepy.btle import DefaultDelegate
+from bleak import BleakClient
+from bleak import exc
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class TionDelegation(DefaultDelegate):
+class TionDelegation:
     def __init__(self):
-        self._data = None
-        DefaultDelegate.__init__(self)
+        self._have_new_data: bool = False
+        self._data: bytearray = bytearray()
 
-    def handleNotification(self, handle: int, data: bytes):
+    def handleNotification(self, handle: int, data: bytearray):
         self._data = data
+        self._have_new_data = True
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
 
-    def handleDiscovery(self, dev, isNewDev, isNewData):
-        if isNewDev:
-            _LOGGER.debug("Discovered device %s", dev.addr)
-        elif isNewData:
-            _LOGGER.debug("Received new data from %s", dev.addr)
+    @property
+    def data(self) -> bytearray:
+        self._have_new_data = False
+        return self._data
 
     @property
-    def data(self) -> bytes:
-        return self._data
+    def have_new_data(self) -> bool:
+        return self._have_new_data
 
 
 class TionException(Exception):
@@ -41,8 +41,8 @@ class tion:
     uuid_write: str = ""
 
     def __init__(self, mac: str):
-        self._mac = mac
-        self._btle: btle.Peripheral = btle.Peripheral(None)
+        self._mac: str = mac
+        self._btle: BleakClient = BleakClient(self.mac)
         self._delegation = TionDelegation()
         self._fan_speed = 0
 
@@ -91,7 +91,7 @@ class tion:
     def mac(self):
         return self._mac
 
-    def decode_temperature(self, raw: bytes) -> int:
+    async def decode_temperature(self, raw: bytes) -> int:
         """ Converts temperature from bytes with addition code to int
         Args:
           raw: raw temperature value from Tion
@@ -106,7 +106,7 @@ class tion:
 
         return result
 
-    def _process_status(self, code: int) -> str:
+    async def _process_status(self, code: int) -> str:
         try:
             status = self.statuses[code]
         except IndexError:
@@ -114,62 +114,48 @@ class tion:
         return status
 
     @property
-    def connection_status(self):
-        connection_status = "disc"
-        try:
-            connection_status = self._btle.getState()
-        except btle.BTLEInternalError as e:
-            if str(e) == "Helper not started (did you call connect()?)":
-                pass
-            else:
-                raise e
-        except btle.BTLEDisconnectError as e:
-            pass
-        except BrokenPipeError as e:
-            self._btle = btle.Peripheral(None)
+    async def connection_status(self):
+        return "connected" if await self._btle.is_connected() else "disc"
 
-        return connection_status
-
-    def _connect(self):
+    async def _connect(self):
         if self.mac == "dummy":
             _LOGGER.info("Dummy connect")
             return
 
-        if self.connection_status == "disc":
+        if await self.connection_status == "disc":
             try:
-                self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
-                for tc in self._btle.getCharacteristics():
-                    if tc.uuid == self.uuid_notify:
-                        self.notify = tc
-                    if tc.uuid == self.uuid_write:
-                        self.write = tc
-            except btle.BTLEDisconnectError as e:
+                await self._btle.connect()
+            except exc.BleakError as e:
                 _LOGGER.warning("Got %s exception", str(e))
                 time.sleep(2)
                 raise e
 
-    def _disconnect(self):
-        if self.connection_status != "disc":
+    async def _disconnect(self):
+        if await self.connection_status != "disc":
             if self.mac != "dummy":
-                self._btle.disconnect()
+                await self._btle.disconnect()
 
-    def _try_write(self, request: bytearray):
+    async def _try_write(self, request: bytearray):
         if self.mac != "dummy":
-            _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.write.uuid)
-            return self.write.write(request)
+            _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.uuid_write)
+            return await self._btle.write_gatt_char(
+                self.uuid_write,
+                request,
+                False
+            )
         else:
             _LOGGER.info("Dummy write")
             return "dummy write"
 
-    def _do_action(self, action: Callable, max_tries: int = 3, *args, **kwargs):
+    async def _do_action(self, action: Callable, max_tries: int = 3, *args, **kwargs):
         tries: int = 0
         while tries < max_tries:
             _LOGGER.debug("Doing " + action.__name__ + ". Attempt " + str(tries + 1) + "/" + str(max_tries))
             try:
                 if action.__name__ != '_connect':
-                    self._connect()
+                    await self._connect()
 
-                response = action(*args, **kwargs)
+                response = await action(*args, **kwargs)
                 break
             except Exception as e:
                 tries += 1
@@ -189,19 +175,9 @@ class tion:
 
         return response
 
-    def _enable_notifications(self):
+    async def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
-        setup_data = b"\x01\x00"
-
-        _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
-        notify_handle = self.notify.getHandle() + 1
-
-        _LOGGER.debug("Will write %s to %s handle", setup_data, notify_handle)
-        result = self._btle.writeCharacteristic(notify_handle, setup_data, withResponse=True)
-        _LOGGER.debug("Result is %s", result)
-        self._btle.withDelegate(self._delegation)
-        self.notify.read()
-        return result
+        return await self._btle.start_notify(self.uuid_notify, self._delegation.handleNotification)
 
     @property
     def fan_speed(self):
