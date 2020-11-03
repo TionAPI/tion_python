@@ -36,6 +36,11 @@ class TionException(Exception):
         self.message = message
 
 
+class TionExceptionGet(TionException):
+    def __init__(self, expression, message):
+        super.__init__(expression, message)
+
+
 class tion:
     statuses = ['off', 'on']
     uuid_notify: str = ""

@@ -4,9 +4,9 @@ from bleak import exc
 from typing import Callable
 
 if __package__ == "":
-    from tion_btle.tion import tion, TionException
+    from tion_btle.tion import tion, TionException, TionExceptionGet
 else:
-    from .tion import tion, TionException
+    from .tion import tion, TionException, TionExceptionGet
 
 import time
 
@@ -108,8 +108,6 @@ class s3(tion):
             finally:
                 return result
 
-        result: dict = {}
-
         try:
             await self._do_action(self._connect)
             await self._enable_notifications()
@@ -131,12 +129,13 @@ class s3(tion):
                 result = await decode_response(byte_response)
 
             except exc.BleakError as e:
-                _LOGGER.debug("Got %s while waiting for notification", str(e))
+                _LOGGER.error("Got %s while waiting for notification", str(e))
                 await self._disconnect()
+                raise TionExceptionGet('get', str(e))
         except TionException as e:
             _LOGGER.error(str(e))
-            result = {"code": 400, "error": "Got exception " + str(e)}
             await self._disconnect()
+            raise e
 
         if not keep_connection:
             await self._disconnect()
@@ -158,7 +157,11 @@ class s3(tion):
             except KeyError:
                 pass
 
-            current_settings = await self.get(True)
+            try:
+                current_settings = await self.get(True)
+            except TionExceptionGet:
+                raise TionException('set', 'Could not get current settings!')
+
             _LOGGER.debug("set: got '%s' settings" % current_settings)
             settings = {**current_settings, **request}
             new_settings = await self.create_command(self.command_SET_PARAMS)
@@ -170,7 +173,14 @@ class s3(tion):
             return new_settings
         try:
             await self._do_action(self._connect)
-            await self._do_action(self._try_write, request=await encode_request(request))
+            try:
+                encoded_request = await encode_request(request)
+            except (KeyError, TionException) as e:
+                _LOGGER.warning("Could not create encoded settings command: %s" % str(e))
+                return
+
+            await self._do_action(self._try_write, request=encoded_request)
+
         except TionException as e:
             _LOGGER.error(str(e))
         finally:
