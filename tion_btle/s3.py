@@ -167,7 +167,8 @@ class s3(tion):
 
             await self._try_write(request=encoded_request)
 
-        except TionException as e:
+        except (exc.BleakError, TionException, TionExceptionGet) as e:
             _LOGGER.error(str(e))
+            raise TionException('set', str(e))
         finally:
             await self._disconnect()
