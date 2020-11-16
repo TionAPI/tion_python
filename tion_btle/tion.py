@@ -106,10 +106,10 @@ class tion:
           Integer value for temperature
         """
         barrier = 0b10000000
-        if (raw < barrier):
+        if int(raw) < barrier:
             result = raw
         else:
-            result = -(~(result - barrier) + barrier + 1)
+            result = -(~(raw - barrier) + barrier + 1)
 
         return result
 
