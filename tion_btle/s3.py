@@ -20,7 +20,6 @@ class s3(tion):
     write = None
     notify = None
 
-    modes = ['recirculation', 'mixed']
     _btle = None
 
     command_prefix = 61
@@ -65,18 +64,11 @@ class s3(tion):
             return self.create_command(self.command_REQUEST_PARAMS)
 
         def decode_response(response: bytearray) -> dict:
-            def process_mode(mode_code: int) -> str:
-                try:
-                    mode = self.modes[mode_code]
-                except IndexError:
-                    mode = 'outside'
-                return mode
-
             result = {}
             try:
                 self.fan_speed = int(list("{:02x}".format(response[2]))[1])
                 result = {"code": 200,
-                          "mode": process_mode(int(list("{:02x}".format(response[2]))[0])),
+                          "mode": self._process_mode(int(list("{:02x}".format(response[2]))[0])),
                           "fan_speed": self.fan_speed,
                           "heater_temp": response[3],
                           "heater": self._process_status(response[4] & 1),
