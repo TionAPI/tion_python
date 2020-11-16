@@ -65,7 +65,7 @@ class Lite(tion):
         self._air_mode: int = 0
         self._electronic_temp: int = 0
         self._electronic_work_time: float = 0
-        self._filter_used: float = 0
+        self._filter_remain: float = 0
         self._device_work_time: float = 0
         self._error_code: int = 0
 
@@ -86,10 +86,9 @@ class Lite(tion):
         self._in_temp = response[5]
         self._out_temp = response[6]
         self._electronic_temp = response[7]
-        self._electronic_work_time = int.from_bytes(response[8:11], byteorder='big', signed=False) / 86400  # ??? days
-        self._filter_used = int.from_bytes(response[16:20], byteorder='big', signed=False) / 86400    # ??? days
-        # self._filter_used = self._filter_used * 100 / 180  # percents
-        self._device_work_time = int.from_bytes(response[20:24], byteorder='big', signed=False) / 86400     # ??? days
+        self._electronic_work_time = int.from_bytes(response[8:11], byteorder='little', signed=False) / 86400  # days
+        self._filter_remain = int.from_bytes(response[16:20], byteorder='little', signed=False) / 86400    # days
+        self._device_work_time = int.from_bytes(response[20:24], byteorder='little', signed=False) / 86400     # days
         self._error_code = response[28]
 
         # self._preset_temp = data[48:50]
@@ -110,9 +109,9 @@ class Lite(tion):
         _LOGGER.info("fan sped is %d", self.fan_speed)
         _LOGGER.info("in temp is %d", self._in_temp)
         _LOGGER.info("out temp is %d", self._out_temp)
-        _LOGGER.info("electronic temp is %d", self._electronic_temp)
-        _LOGGER.info("electronic work time is %s", self._electronic_work_time)
-        _LOGGER.info("filter_used %.1f%%", self._filter_used)
+        _LOGGER.info("electronic temp is %d days", self._electronic_temp)
+        _LOGGER.info("electronic work time is %s days", self._electronic_work_time)
+        _LOGGER.info("filter remain %.1f days", self._filter_remain)
         _LOGGER.info("device work time is %s", self._device_work_time)
 
         _LOGGER.info("error code is %d", self._error_code)
@@ -241,7 +240,7 @@ class Lite(tion):
             "sound": self.sound,
             "out_temp": self._out_temp,
             "in_temp": self._in_temp,
-            "filter_remain": self._filter_used,
+            "filter_remain": self._filter_remain,
             "time": strftime("%H:%M", localtime()), # lite does not report current timestamp, so return now
             "request_error_code": code,  # lite have no special error code
             "productivity": "unknown",  # lite have no productivity information
