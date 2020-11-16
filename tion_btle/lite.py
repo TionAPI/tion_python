@@ -83,8 +83,8 @@ class Lite(tion):
         self._air_mode = response[2]
         self.target_temp = response[3]
         self.fan_speed = response[4]
-        self._in_temp = response[5]
-        self._out_temp = response[6]
+        self._in_temp = self.decode_temperature(response[5])
+        self._out_temp = self.decode_temperature(response[6])
         self._electronic_temp = response[7]
         self._electronic_work_time = int.from_bytes(response[8:11], byteorder='little', signed=False) / 86400  # days
         self._filter_remain = int.from_bytes(response[16:20], byteorder='little', signed=False) / 86400    # days
