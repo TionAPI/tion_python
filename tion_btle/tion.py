@@ -37,6 +37,7 @@ class TionException(Exception):
 
 class tion:
     statuses = ['off', 'on']
+    modes = ['recirculation', 'mixed']  # 'recirculation', 'mixed' and 'outside', as Index exception
     uuid_notify: str = ""
     uuid_write: str = ""
 
@@ -45,6 +46,12 @@ class tion:
         self._btle: btle.Peripheral = btle.Peripheral(None)
         self._delegation = TionDelegation()
         self._fan_speed = 0
+
+        #states
+        self._in_temp: int = 0
+        self._out_temp: int = 0
+        self._target_temp: int = 0
+        self._fan_speed: int = 0
 
     @abc.abstractmethod
     def _send_request(self, request: bytearray) -> bytearray:
@@ -190,17 +197,20 @@ class tion:
         return response
 
     def _enable_notifications(self):
-        _LOGGER.debug("Enabling notification")
-        setup_data = b"\x01\x00"
+        if self.mac != "dummy":
+            _LOGGER.debug("Enabling notification")
+            setup_data = b"\x01\x00"
 
-        _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
-        notify_handle = self.notify.getHandle() + 1
+            _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
+            notify_handle = self.notify.getHandle() + 1
 
-        _LOGGER.debug("Will write %s to %s handle", setup_data, notify_handle)
-        result = self._btle.writeCharacteristic(notify_handle, setup_data, withResponse=True)
-        _LOGGER.debug("Result is %s", result)
-        self._btle.withDelegate(self._delegation)
-        self.notify.read()
+            _LOGGER.debug("Will write %s to %s handle", setup_data, notify_handle)
+            result = self._btle.writeCharacteristic(notify_handle, setup_data, withResponse=True)
+            _LOGGER.debug("Result is %s", result)
+            self._btle.withDelegate(self._delegation)
+            self.notify.read()
+        else:
+            result = True
         return result
 
     @property
@@ -217,3 +227,10 @@ class tion:
             self._fan_speed = 1
 
         # self.set({"fan_speed": new_speed})
+
+    def _process_mode(self, mode_code: int) -> str:
+        try:
+            mode = self.modes[mode_code]
+        except IndexError:
+            mode = 'outside'
+        return mode
