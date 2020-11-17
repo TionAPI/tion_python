@@ -80,7 +80,7 @@ class tion:
         """ Encode dictionary of request to byte array
 
         Args:
-          request: dictionry with request
+          request: dictionary with request
         Returns:
           Byte array for sending to device
         """
@@ -90,7 +90,7 @@ class tion:
     def get(self, keep_connection: bool = False) -> dict:
         """ Get device information
         Returns:
-          dictionay with device paramters
+          dictionary with device parameters
         """
         pass
 
