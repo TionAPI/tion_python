@@ -98,7 +98,8 @@ class tion:
     def mac(self):
         return self._mac
 
-    def decode_temperature(self, raw: bytes) -> int:
+    @staticmethod
+    def decode_temperature(raw: bytes) -> int:
         """ Converts temperature from bytes with addition code to int
         Args:
           raw: raw temperature value from Tion
