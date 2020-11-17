@@ -107,12 +107,8 @@ class tion:
           Integer value for temperature
         """
         barrier = 0b10000000
-        if int(raw) < barrier:
-            result = raw
-        else:
-            result = -(~(raw - barrier) + barrier + 1)
-
-        return result
+        raw_int = int(raw)
+        return raw_int if raw_int < barrier else -(~(raw_int - barrier) + barrier + 1)
 
     def _process_status(self, code: int) -> str:
         try:
