@@ -1,6 +1,6 @@
 import logging
 from random import randrange
-from time import localtime, strftime
+
 
 if __package__ == "":
     from tion_btle.tion import tion, TionException
@@ -38,9 +38,8 @@ class Lite(tion):
         self._request_id: bytearray = bytearray()
         self._sent_request_id: bytearray = bytearray()
         self._crc: bytearray = bytearray()
-        self._have_full_package = False
         self._header: bytearray = bytearray()
-        self._fw_version: str = ""
+        self._have_full_package = False
         self._got_new_sequence = False
 
         if mac == "dummy":
@@ -55,77 +54,56 @@ class Lite(tion):
 
         # states
         self.have_breezer_state: bool = False
-        self._state: bool = False
-        self._sound: bool = False
         self._light: bool = False
         self._filter_change_required: bool = False
         self._co2_auto_control: bool = False
-        self._heater: bool = False
         self._have_heater: bool = False
-        self._air_mode: int = 0
         self._electronic_temp: int = 0
         self._electronic_work_time: float = 0
-        self._filter_remain: float = 0
         self._device_work_time: float = 0
         self._error_code: int = 0
 
+    def _decode_header(self, header: bytearray):
+        _LOGGER.debug("Header is %s", bytes(header).hex())
+        self._package_size = int.from_bytes(header[1:2], byteorder='big', signed=False)
+        if header[3] != self.MAGIC_NUMBER:
+            _LOGGER.error("Got wrong magic number at position 3")
+            raise Exception("wrong magic number")
+        self._command_type = reversed(header[5:6])
+        self._request_id = header[7:10]  # must match self._sent_request_id
+        self._command_number = header[11:14]
+
     def _decode_response(self, response: bytearray):
         _LOGGER.debug("Data is %s", bytes(response).hex())
+        try:
+            self._state = response[0] & 1
+            self._sound = response[0] >> 1 & 1
+            self._light = response[0] >> 2 & 1
+            self._filter_change_required = response[0] >> 4 & 1
+            self._co2_auto_control = response[0] >> 5 & 1
+            self._heater = response[0] >> 6 & 1
+            self._have_heater = response[0] >> 7 & 1
 
-        self._state = response[0] & 1
-        self._sound = response[0] >> 1 & 1
-        self._light = response[0] >> 2 & 1
-        self._filter_change_required = response[0] >> 4 & 1
-        self._co2_auto_control = response[0] >> 5 & 1
-        self._heater = response[0] >> 6 & 1
-        self._have_heater = response[0] >> 7 & 1
+            self._mode = response[2]
+            self._target_temp = response[3]
+            self._fan_speed = response[4]
+            self._in_temp = self.decode_temperature(response[5])
+            self._out_temp = self.decode_temperature(response[6])
+            self._electronic_temp = response[7]
+            self._electronic_work_time = int.from_bytes(response[8:11], byteorder='little', signed=False) / 86400  # days
+            self._filter_remain = int.from_bytes(response[16:20], byteorder='little', signed=False) / 86400    # days
+            self._device_work_time = int.from_bytes(response[20:24], byteorder='little', signed=False) / 86400     # days
+            self._error_code = response[28]
 
-        self._air_mode = response[2]
-        self.target_temp = response[3]
-        self.fan_speed = response[4]
-        self._in_temp = self.decode_temperature(response[5])
-        self._out_temp = self.decode_temperature(response[6])
-        self._electronic_temp = response[7]
-        self._electronic_work_time = int.from_bytes(response[8:11], byteorder='little', signed=False) / 86400  # days
-        self._filter_remain = int.from_bytes(response[16:20], byteorder='little', signed=False) / 86400    # days
-        self._device_work_time = int.from_bytes(response[20:24], byteorder='little', signed=False) / 86400     # days
-        self._error_code = response[28]
-
-        # self._preset_temp = data[48:50]
-        # self._preset_fan = data[51:53]
-        # self._max_fan = data[54]
-        # self._heater_percent = data[55]
-
-        _LOGGER.info("state is %s", self.state)
-        _LOGGER.info("sound is %s", self.sound)
-        _LOGGER.info("light is %s", self.light)
-        _LOGGER.info("filter change required is %s", self._filter_change_required)
-        _LOGGER.info("co2 auto control is %s", self._co2_auto_control)
-        _LOGGER.info("have_heater is %s", self._have_heater)
-        _LOGGER.info("heater is %s", self.heater)
-
-        _LOGGER.info("air mode %d", self._air_mode)
-        _LOGGER.info("target temperature is %d", self.target_temp)
-        _LOGGER.info("fan sped is %d", self.fan_speed)
-        _LOGGER.info("in temp is %d", self._in_temp)
-        _LOGGER.info("out temp is %d", self._out_temp)
-        _LOGGER.info("electronic temp is %d days", self._electronic_temp)
-        _LOGGER.info("electronic work time is %s days", self._electronic_work_time)
-        _LOGGER.info("filter remain %.1f days", self._filter_remain)
-        _LOGGER.info("device work time is %s", self._device_work_time)
-
-        _LOGGER.info("error code is %d", self._error_code)
+            # self._preset_temp = data[48:50]
+            # self._preset_fan = data[51:53]
+            # self._max_fan = data[54]
+            # self._heater_percent = data[55]
+        except IndexError as e:
+            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
 
     def collect_command(self, package: bytearray) -> bool:
-        def decode_header(header: bytearray):
-            _LOGGER.debug("Header is %s", bytes(header).hex())
-            self._package_size = int.from_bytes(header[1:2], byteorder='big', signed=False)
-            if header[3] != self.MAGIC_NUMBER:
-                _LOGGER.error("Got wrong magic number at position 3")
-                raise Exception("wrong magic number")
-            self._command_type = reversed(header[5:6])
-            self._request_id = header[7:10]  # must match self._sent_request_id
-            self._command_number = header[11:14]
+        self._have_full_package = False
 
         _LOGGER.debug("Got %s from tion", bytes(package).hex())
 
@@ -134,35 +112,28 @@ class Lite(tion):
             self._have_full_package = True if package[0] == self.SINGLE_PACKET_ID else False
             self._got_new_sequence = True if package[0] == self.FIRST_PACKET_ID else False
         elif package[0] == self.MIDDLE_PACKET_ID:
-            self._have_full_package = False
             if not self._got_new_sequence:
-                _LOGGER.debug("Got middle packet but waiting for a first!")
+                _LOGGER.critical("Got middle packet but waiting for a first!")
             else:
-                self._have_full_package = False
                 package = list(package)
                 package.pop(0)
-                _LOGGER.debug("Package is %s" % package)
                 self._data += bytearray(package)
         elif package[0] == self.END_PACKET_ID:
             if not self._got_new_sequence:
-                self._have_full_package = False
-                _LOGGER.debug("Got end packet but waiting for a first!")
+                _LOGGER.critical("Got end packet but waiting for a first!")
             else:
                 self._have_full_package = True
+                self._got_new_sequence = False
                 package = list(package)
                 package.pop(0)
                 self._data += bytearray(package)
-                self._crc = package[len(package) - 1] + package[len(package) - 2]
-                self._got_new_sequence = False
         else:
-            _LOGGER.error("Unknown pocket id %s", hex(package[0]))
+            _LOGGER.error("Unknown package id %s", hex(package[0]))
 
         if self._have_full_package:
             self._header = self._data[:15]
             self._data = self._data[15:-2]
             self._crc = self._data[-2:]
-            decode_header(self._header)
-            self._decode_response(self._data)
 
         return self._have_full_package
 
@@ -173,7 +144,7 @@ class Lite(tion):
             return p
         return self.notify.read()
 
-    def get(self, keep_connection: bool = False) -> dict:
+    def _get(self, keep_connection: bool = False) -> dict:
         def generate_request_id() -> bytearray:
             self._sent_request_id = bytearray([0x0d, 0xd7, 0x1f, 0x8f])
             return self._sent_request_id
@@ -220,32 +191,25 @@ class Lite(tion):
             else:
                 _LOGGER.debug("Waiting too long for data")
                 self.notify.read()
-
-        except TionException as e:
-            _LOGGER.error(str(e))
         finally:
             self._disconnect()
+
         if self.have_breezer_state:
-            code = 200
+            self._decode_header(self._header)
+            self._decode_response(self._data)
+            result = {
+                "code": 200,
+                "device_work_time": self._device_work_time,
+                "electronic_work_time": self._electronic_work_time,
+                "electronic_temp": self._electronic_temp,
+                "co2_auto_control": str(self._co2_auto_control),
+                "filter_change_required": str(self._filter_change_required),
+                "light": self.light,
+            }
         else:
-            code = 500
-        return {
-            "code": code,
-            "mode": self._process_mode(self._air_mode),
-            "fan_speed": self.fan_speed,
-            "heater_temp": self.target_temp,
-            "heater": self.heater,
-            "status": self.state,
-            "timer": 'off',  # lite have no timers
-            "sound": self.sound,
-            "out_temp": self._out_temp,
-            "in_temp": self._in_temp,
-            "filter_remain": self._filter_remain,
-            "time": strftime("%H:%M", localtime()), # lite does not report current timestamp, so return now
-            "request_error_code": code,  # lite have no special error code
-            "productivity": "unknown",  # lite have no productivity information
-            "fw_version": "unknown",  # lite have firmware version in other package, we don't collect it
-        }
+            raise TionException("Could not get breezer state")
+
+        return result
 
     @property
     def __random(self) -> bytes:
@@ -262,60 +226,12 @@ class Lite(tion):
         return [0x0a, 0x14, 0x19, 0x02, 0x04, 0x06]
 
     @property
-    def fan_speed(self) -> int:
-        return self._fan_speed
-
-    @fan_speed.setter
-    def fan_speed(self, new_speed: int):
-        self._fan_speed = new_speed
-
-    @staticmethod
-    def _decode_state(state: bool) -> str:
-        return "on" if state else "off"
-
-    @staticmethod
-    def _encode_state(state: str) -> bool:
-        return state == "on"
-
-    @property
-    def state(self) -> str:
-        return self._decode_state(self._state)
-
-    @state.setter
-    def state(self, new_state: str):
-        self._state = self._encode_state(new_state)
-
-    @property
-    def sound(self) -> str:
-        return self._decode_state(self._sound)
-
-    @sound.setter
-    def sound(self, new_state: str):
-        self._sound = self._encode_state(new_state)
-
-    @property
     def light(self) -> str:
         return self._decode_state(self._light)
 
     @light.setter
     def light(self, new_state: str):
         self._light = self._encode_state(new_state)
-
-    @property
-    def heater(self) -> str:
-        return self._decode_state(self._heater)
-
-    @heater.setter
-    def heater(self, new_state: str):
-        self._heater = self._encode_state(new_state)
-
-    @property
-    def target_temp(self) -> int:
-        return self._target_temp
-
-    @target_temp.setter
-    def target_temp(self, new_temp: int):
-        self._target_temp = new_temp
 
     def _send_request(self, request: bytearray):
         def chunks(lst, n):

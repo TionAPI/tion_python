@@ -2,6 +2,7 @@ import abc
 import logging
 import time
 from typing import Callable
+from time import localtime, strftime
 
 from bluepy import btle
 from bluepy.btle import DefaultDelegate
@@ -46,12 +47,19 @@ class tion:
         self._btle: btle.Peripheral = btle.Peripheral(None)
         self._delegation = TionDelegation()
         self._fan_speed = 0
-
-        #states
+        self._model: str = self.__class__.__name__
+        # states
         self._in_temp: int = 0
         self._out_temp: int = 0
         self._target_temp: int = 0
         self._fan_speed: int = 0
+        self._mode: int = 0
+        self._state: bool = False
+        self._heater: bool = False
+        self._sound: bool = False
+        self._heating: bool = False
+        self._filter_remain: float = 0.0
+        self._error_code: int = 0
 
     @abc.abstractmethod
     def _send_request(self, request: bytearray) -> bytearray:
@@ -87,12 +95,48 @@ class tion:
         pass
 
     @abc.abstractmethod
-    def get(self, keep_connection: bool = False) -> dict:
-        """ Get device information
+    def _get(self, keep_connection: bool = False) -> dict:
+        """ Get device-specific information
         Returns:
           dictionary with device parameters
         """
         pass
+
+    def get(self, keep_connection: bool = False) -> dict:
+        """
+        Get current device state
+        :param keep_connection: should we keep connection to device or disconnect after getting data
+        :return:
+          dictionary with device state
+        """
+
+        model_specific_data = self._get(keep_connection)
+
+        if self.heater == "off":
+            self.heating = "off"
+        else:
+            if self.in_temp < self.target_temp and self.out_temp - self.target_temp < 3:
+                self.heating = "on"
+            else:
+                self.heating = "off"
+
+        common = {
+            "state": self.state,
+            "heater": self.heater,
+            "heating": self.heating,
+            "sound": self.sound,
+            "mode": self.mode,
+            "out_temp": self.out_temp,
+            "in_temp": self.in_temp,
+            "heater_temp": self.target_temp,
+            "fan_speed": self.fan_speed,
+            "filter_remain": self.filter_remain,
+            "time": strftime("%H:%M", localtime()),
+            "request_error_code": self._error_code,
+            "model": self.model,
+        }
+
+        return {**common, **model_specific_data}
 
     @property
     def mac(self):
@@ -231,3 +275,73 @@ class tion:
         except IndexError:
             mode = 'outside'
         return mode
+
+    @staticmethod
+    def _decode_state(state: bool) -> str:
+        return "on" if state else "off"
+
+    @staticmethod
+    def _encode_state(state: str) -> bool:
+        return state == "on"
+
+    @property
+    def state(self) -> str:
+        return self._decode_state(self._state)
+
+    @state.setter
+    def state(self, new_state: str):
+        self._state = self._encode_state(new_state)
+
+    @property
+    def heater(self) -> str:
+        return self._decode_state(self._heater)
+
+    @heater.setter
+    def heater(self, new_state: str):
+        self._heater = self._encode_state(new_state)
+
+    @property
+    def target_temp(self) -> int:
+        return self._target_temp
+
+    @target_temp.setter
+    def target_temp(self, new_temp: int):
+        self._target_temp = new_temp
+
+    @property
+    def in_temp(self):
+        """Income air temperature"""
+        return self._in_temp
+
+    @property
+    def out_temp(self):
+        """Outcome air temperature"""
+        return self._out_temp
+
+    @property
+    def sound(self) -> str:
+        return self._decode_state(self._sound)
+
+    @sound.setter
+    def sound(self, new_state: str):
+        self._sound = self._encode_state(new_state)
+
+    @property
+    def filter_remain(self) -> float:
+        return self._filter_remain
+
+    @property
+    def heating(self) -> str:
+        return self._decode_state(self._heating)
+
+    @heating.setter
+    def heating(self, new_state: str):
+        self._heating = self._encode_state(new_state)
+
+    @property
+    def mode(self):
+        return self._process_mode(self._mode)
+
+    @property
+    def model(self) -> str:
+        return self._model

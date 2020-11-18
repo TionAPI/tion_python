@@ -32,6 +32,12 @@ class s3(tion):
     def __init__(self, mac: str):
         super().__init__(mac)
 
+        # S3-specific properties
+        self._timer: bool = False
+        self._time: str = "unknown"
+        self._productivity: int = 0
+        self._fw_version: str = "unknown"
+
     def __try_get_state(self) -> bytearray:
         response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
         _LOGGER.debug("Response is %s", bytes(response).hex())
@@ -59,44 +65,33 @@ class s3(tion):
         return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           self.command_suffix])
 
-    def get(self, keep_connection=False) -> dict:
+    def _decode_response(self, response: bytearray):
+        _LOGGER.debug("Data is %s", bytes(response).hex())
+        try:
+            self._fan_speed = int(list("{:02x}".format(response[2]))[1])
+            self._mode = response[2]
+            self._heater = response[4] & 1
+            self._state = response[4] >> 1 & 1
+            self._target_temp = response[3]
+            self._sound = response[4] >> 3 & 1
+            self._out_temp = self.decode_temperature(response[7])
+            self._in_temp = self.decode_temperature(response[8])
+            self._filter_remain = response[10] * 256 + response[9]
+            self._error_code = response[13]
+
+            self._timer = self._process_status(response[4] >> 2 & 1)
+            self._time = "{}:{}".format(response[11], response[12])
+            self._productivity = response[14]
+            self._fw_version = "{:02x}{:02x}".format(response[18], response[17])
+
+        except IndexError as e:
+            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
+
+    def _get(self, keep_connection=False) -> dict:
         def get_status_command() -> bytearray:
             return self.create_command(self.command_REQUEST_PARAMS)
 
-        def decode_response(response: bytearray) -> dict:
-            result = {}
-            try:
-                self.fan_speed = int(list("{:02x}".format(response[2]))[1])
-                result = {"code": 200,
-                          "mode": self._process_mode(int(list("{:02x}".format(response[2]))[0])),
-                          "fan_speed": self.fan_speed,
-                          "heater_temp": response[3],
-                          "heater": self._process_status(response[4] & 1),
-                          "status": self._process_status(response[4] >> 1 & 1),
-                          "timer": self._process_status(response[4] >> 2 & 1),
-                          "sound": self._process_status(response[4] >> 3 & 1),
-                          "out_temp": self.decode_temperature(response[7]),
-                          "in_temp": self.decode_temperature(response[8]),
-                          "filter_remain": response[10] * 256 + response[9],
-                          "time": "{}:{}".format(response[11], response[12]),
-                          "request_error_code": response[13],
-                          "productivity":  response[14],
-                          "fw_version": "{:02x}{:02x}".format(response[18], response[17])}
-
-                if result["heater"] == "off":
-                    result["is_heating"] = "off"
-                else:
-                    if result["in_temp"] < result["heater_temp"] and result["out_temp"] - result["heater_temp"] < 3:
-                        result["is_heating"] = "on"
-                    else:
-                        result["is_heating"] = "off"
-
-            except IndexError as e:
-                result = {"code": 400,
-                          "error": "Got bad response from Tion '%s': %s while parsing" % (response, str(e))}
-            finally:
-                return result
-
+        have_data_from_breezer: bool = False
         try:
             self._do_action(self._connect)
             self._enable_notifications()
@@ -106,8 +101,7 @@ class s3(tion):
             try:
                 while i < 10:
                     if self._btle.waitForNotifications(1.0):
-                        byte_response = self._delegation.data
-                        result = decode_response(byte_response)
+                        have_data_from_breezer = True
                         break
                     i += 1
                 else:
@@ -115,13 +109,20 @@ class s3(tion):
                     self.notify.read()
             except btle.BTLEDisconnectError as e:
                 _LOGGER.debug("Got %s while waiting for notification", str(e))
-                self._disconnect()
-
-        except TionException as e:
-            _LOGGER.error(str(e))
-            result = {"code": 400, "error": "Got exception " + str(e)}
         finally:
             self._disconnect()
+
+        if have_data_from_breezer:
+            self._decode_response(self._delegation.data)
+            result = {
+                "code": 200,
+                "timer": self._timer,
+                "time": self._time,
+                "productivity": self._productivity,
+                "fw_version": self._fw_version,
+            }
+        else:
+            raise TionException("Could not get breezer state")
 
         return result
 
