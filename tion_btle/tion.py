@@ -48,6 +48,8 @@ class tion:
         self._delegation = TionDelegation()
         self._fan_speed = 0
         self._model: str = self.__class__.__name__
+        self._data: bytearray = bytearray()
+        """Data from breezer response at request state command"""
         # states
         self._in_temp: int = 0
         self._out_temp: int = 0
@@ -95,32 +97,27 @@ class tion:
         pass
 
     @abc.abstractmethod
-    def _get(self, keep_connection: bool = False) -> dict:
-        """ Get device-specific information
+    def _get_data_from_breezer(self, keep_connection: bool = False) -> bytearray:
+        """ Get byte array with brezer response on state request
         Returns:
-          dictionary with device parameters
+          breezer response
         """
-        pass
+        raise NotImplementedError()
 
-    def get(self, keep_connection: bool = False) -> dict:
+    @abc.abstractmethod
+    def _generate_model_specific_json(self) -> dict:
         """
-        Get current device state
-        :param keep_connection: should we keep connection to device or disconnect after getting data
-        :return:
-          dictionary with device state
+        Generates dict with model-specific parameters based on class variables
+        :return: dict of model specific properties
         """
+        raise NotImplementedError()
 
-        model_specific_data = self._get(keep_connection)
-
-        if self.heater == "off":
-            self.heating = "off"
-        else:
-            if self.in_temp < self.target_temp and self.out_temp - self.target_temp < 3:
-                self.heating = "on"
-            else:
-                self.heating = "off"
-
-        common = {
+    def __generate_common_json(self) -> dict:
+        """
+        Generates dict with common parameters based on class properties
+        :return: dict of common properties
+        """
+        return {
             "state": self.state,
             "heater": self.heater,
             "heating": self.heating,
@@ -135,6 +132,49 @@ class tion:
             "request_error_code": self._error_code,
             "model": self.model,
         }
+
+    def __detect_heating_state(self,
+                               in_temp: int = None,
+                               out_temp: int = None,
+                               target_temp: int = None,
+                               heater: str = None) -> None:
+        """
+        Tries to guess is heater working right now
+        :param in_temp: air intake temperature
+        :param out_temp: ait outtake temperature
+        :param target_temp: target temperature for heater
+        :param heater: heater state
+        :return: None
+        """
+        if in_temp is None:
+            in_temp = self.in_temp
+        if out_temp is None:
+            out_temp = self.out_temp
+        if target_temp is None:
+            target_temp = self.target_temp
+        if heater is None:
+            heater = self.heater
+
+        if heater == "off":
+            self.heating = "off"
+        else:
+            if in_temp < target_temp and out_temp - target_temp < 3:
+                self.heating = "on"
+            else:
+                self.heating = "off"
+
+    def get(self, keep_connection: bool = False) -> dict:
+        """
+        Get current device state
+        :param keep_connection: should we keep connection to device or disconnect after getting data
+        :return:
+          dictionary with device state
+        """
+        response = self._get_data_from_breezer(keep_connection)
+        self._decode_response(response)
+        self.__detect_heating_state()
+        common = self.__generate_common_json()
+        model_specific_data = self._generate_model_specific_json()
 
         return {**common, **model_specific_data}
 

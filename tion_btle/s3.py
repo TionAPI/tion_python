@@ -65,29 +65,7 @@ class s3(tion):
         return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           self.command_suffix])
 
-    def _decode_response(self, response: bytearray):
-        _LOGGER.debug("Data is %s", bytes(response).hex())
-        try:
-            self._fan_speed = int(list("{:02x}".format(response[2]))[1])
-            self._mode = response[2]
-            self._heater = response[4] & 1
-            self._state = response[4] >> 1 & 1
-            self._target_temp = response[3]
-            self._sound = response[4] >> 3 & 1
-            self._out_temp = self.decode_temperature(response[7])
-            self._in_temp = self.decode_temperature(response[8])
-            self._filter_remain = response[10] * 256 + response[9]
-            self._error_code = response[13]
-
-            self._timer = self._process_status(response[4] >> 2 & 1)
-            self._time = "{}:{}".format(response[11], response[12])
-            self._productivity = response[14]
-            self._fw_version = "{:02x}{:02x}".format(response[18], response[17])
-
-        except IndexError as e:
-            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
-
-    def _get(self, keep_connection=False) -> dict:
+    def _get_data_from_breezer(self, keep_connection=False) -> bytearray:
         def get_status_command() -> bytearray:
             return self.create_command(self.command_REQUEST_PARAMS)
 
@@ -113,18 +91,44 @@ class s3(tion):
             self._disconnect()
 
         if have_data_from_breezer:
-            self._decode_response(self._delegation.data)
-            result = {
-                "code": 200,
-                "timer": self._timer,
-                "time": self._time,
-                "productivity": self._productivity,
-                "fw_version": self._fw_version,
-            }
+            self._data = self._delegation.data
+            result = self._data
+
         else:
             raise TionException("Could not get breezer state")
 
         return result
+
+    def _decode_response(self, response: bytearray):
+        _LOGGER.debug("Data is %s", bytes(response).hex())
+        try:
+            self._fan_speed = int(list("{:02x}".format(response[2]))[1])
+            self._mode = response[2]
+            self._heater = response[4] & 1
+            self._state = response[4] >> 1 & 1
+            self._target_temp = response[3]
+            self._sound = response[4] >> 3 & 1
+            self._out_temp = self.decode_temperature(response[7])
+            self._in_temp = self.decode_temperature(response[8])
+            self._filter_remain = response[10] * 256 + response[9]
+            self._error_code = response[13]
+
+            self._timer = self._process_status(response[4] >> 2 & 1)
+            self._time = "{}:{}".format(response[11], response[12])
+            self._productivity = response[14]
+            self._fw_version = "{:02x}{:02x}".format(response[18], response[17])
+
+        except IndexError as e:
+            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
+
+    def _generate_model_specific_json(self) -> dict:
+        return {
+            "code": 200,
+            "timer": self._timer,
+            "time": self._time,
+            "productivity": self._productivity,
+            "fw_version": self._fw_version,
+        }
 
     def set(self, request: dict, keep_connection=False):
         def encode_request(request: dict) -> bytearray:

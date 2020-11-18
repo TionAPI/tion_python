@@ -73,35 +73,6 @@ class Lite(tion):
         self._request_id = header[7:10]  # must match self._sent_request_id
         self._command_number = header[11:14]
 
-    def _decode_response(self, response: bytearray):
-        _LOGGER.debug("Data is %s", bytes(response).hex())
-        try:
-            self._state = response[0] & 1
-            self._sound = response[0] >> 1 & 1
-            self._light = response[0] >> 2 & 1
-            self._filter_change_required = response[0] >> 4 & 1
-            self._co2_auto_control = response[0] >> 5 & 1
-            self._heater = response[0] >> 6 & 1
-            self._have_heater = response[0] >> 7 & 1
-
-            self._mode = response[2]
-            self._target_temp = response[3]
-            self._fan_speed = response[4]
-            self._in_temp = self.decode_temperature(response[5])
-            self._out_temp = self.decode_temperature(response[6])
-            self._electronic_temp = response[7]
-            self._electronic_work_time = int.from_bytes(response[8:11], byteorder='little', signed=False) / 86400  # days
-            self._filter_remain = int.from_bytes(response[16:20], byteorder='little', signed=False) / 86400    # days
-            self._device_work_time = int.from_bytes(response[20:24], byteorder='little', signed=False) / 86400     # days
-            self._error_code = response[28]
-
-            # self._preset_temp = data[48:50]
-            # self._preset_fan = data[51:53]
-            # self._max_fan = data[54]
-            # self._heater_percent = data[55]
-        except IndexError as e:
-            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
-
     def collect_command(self, package: bytearray) -> bool:
         self._have_full_package = False
 
@@ -144,7 +115,7 @@ class Lite(tion):
             return p
         return self.notify.read()
 
-    def _get(self, keep_connection: bool = False) -> dict:
+    def _get_data_from_breezer(self, keep_connection: bool = False) -> bytearray:
         def generate_request_id() -> bytearray:
             self._sent_request_id = bytearray([0x0d, 0xd7, 0x1f, 0x8f])
             return self._sent_request_id
@@ -155,7 +126,6 @@ class Lite(tion):
         #        [self.SINGLE_PACKET_ID, 0x10, 0x00, self.MAGIC_NUMBER, 0x02] +
         #        self.REQUEST_DEVICE_INFO + list(self._sent_request_id) +
         #        [0x3c, 0x9f, 0xe9] + self.CRC)
-
         def create_request_params_command() -> bytearray:
             generate_request_id()
             packet_size = 0x10  # 17 bytes
@@ -165,6 +135,7 @@ class Lite(tion):
                 [0x48, 0xd3, 0xc3, 0x1a] + self.CRC)
 
         self.have_breezer_state = False
+
         try:
             self._do_action(self._connect)
             self._enable_notifications()
@@ -195,21 +166,51 @@ class Lite(tion):
             self._disconnect()
 
         if self.have_breezer_state:
-            self._decode_header(self._header)
-            self._decode_response(self._data)
-            result = {
-                "code": 200,
-                "device_work_time": self._device_work_time,
-                "electronic_work_time": self._electronic_work_time,
-                "electronic_temp": self._electronic_temp,
-                "co2_auto_control": str(self._co2_auto_control),
-                "filter_change_required": str(self._filter_change_required),
-                "light": self.light,
-            }
+            result = self._data
         else:
             raise TionException("Could not get breezer state")
 
         return result
+
+    def _decode_response(self, response: bytearray):
+        _LOGGER.debug("Data is %s", bytes(response).hex())
+        try:
+            self._state = response[0] & 1
+            self._sound = response[0] >> 1 & 1
+            self._light = response[0] >> 2 & 1
+            self._filter_change_required = response[0] >> 4 & 1
+            self._co2_auto_control = response[0] >> 5 & 1
+            self._heater = response[0] >> 6 & 1
+            self._have_heater = response[0] >> 7 & 1
+
+            self._mode = response[2]
+            self._target_temp = response[3]
+            self._fan_speed = response[4]
+            self._in_temp = self.decode_temperature(response[5])
+            self._out_temp = self.decode_temperature(response[6])
+            self._electronic_temp = response[7]
+            self._electronic_work_time = int.from_bytes(response[8:11], byteorder='little', signed=False) / 86400  # days
+            self._filter_remain = int.from_bytes(response[16:20], byteorder='little', signed=False) / 86400    # days
+            self._device_work_time = int.from_bytes(response[20:24], byteorder='little', signed=False) / 86400     # days
+            self._error_code = response[28]
+
+            # self._preset_temp = data[48:50]
+            # self._preset_fan = data[51:53]
+            # self._max_fan = data[54]
+            # self._heater_percent = data[55]
+        except IndexError as e:
+            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
+
+    def _generate_model_specific_json(self) -> dict:
+        return {
+            "code": 200,
+            "device_work_time": self._device_work_time,
+            "electronic_work_time": self._electronic_work_time,
+            "electronic_temp": self._electronic_temp,
+            "co2_auto_control": str(self._co2_auto_control),
+            "filter_change_required": str(self._filter_change_required),
+            "light": self.light,
+        }
 
     @property
     def __random(self) -> bytes:
