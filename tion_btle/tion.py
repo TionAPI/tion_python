@@ -63,6 +63,15 @@ class tion:
         self._filter_remain: float = 0.0
         self._error_code: int = 0
 
+        if self.mac == "dummy":
+            _LOGGER.warning("Dummy mode detected!")
+            self._dummy_data: bytearray = bytearray()
+            self._connect = self._connect_dummy
+            self._disconnect = self._disconnect_dummy
+            self._try_write = self._try_write_dummy
+            self._enable_notifications = self._enable_notifications_dummy
+            self._get_data_from_breezer = self._get_data_from_breezer_dummy
+
     @abc.abstractmethod
     def _send_request(self, request: bytearray) -> bytearray:
         """ Send request to device
@@ -103,6 +112,9 @@ class tion:
           breezer response
         """
         raise NotImplementedError()
+
+    def _get_data_from_breezer_dummy(self, keep_connection: bool = False) -> bytearray:
+        return self._dummy_data
 
     @abc.abstractmethod
     def _generate_model_specific_json(self) -> dict:
@@ -218,11 +230,14 @@ class tion:
 
         return connection_status
 
-    def _connect(self):
-        if self.mac == "dummy":
-            _LOGGER.info("Dummy connect")
-            return
+    @staticmethod
+    def _connect_dummy():
+        """dummy connection"""
 
+        _LOGGER.info("Dummy connect")
+        return
+
+    def _connect(self):
         if self.connection_status == "disc":
             try:
                 self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
@@ -236,18 +251,22 @@ class tion:
                 time.sleep(2)
                 raise e
 
+    @staticmethod
+    def _disconnect_dummy():
+        return
+
     def _disconnect(self):
         if self.connection_status != "disc":
-            if self.mac != "dummy":
-                self._btle.disconnect()
+            self._btle.disconnect()
+
+    @staticmethod
+    def _try_write_dummy(request: bytearray):
+        _LOGGER.debug("Dummy write %s", bytes(request).hex())
+        return
 
     def _try_write(self, request: bytearray):
-        if self.mac != "dummy":
-            _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.write.uuid)
-            return self.write.write(request)
-        else:
-            _LOGGER.info("Dummy write")
-            return "dummy write"
+        _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.write.uuid)
+        return self.write.write(request)
 
     def _do_action(self, action: Callable, max_tries: int = 3, *args, **kwargs):
         tries: int = 0
@@ -277,22 +296,22 @@ class tion:
 
         return response
 
+    @staticmethod
+    def _enable_notifications_dummy():
+        return
+
     def _enable_notifications(self):
-        if self.mac != "dummy":
-            _LOGGER.debug("Enabling notification")
-            setup_data = b"\x01\x00"
+        _LOGGER.debug("Enabling notification")
+        setup_data = b"\x01\x00"
 
-            _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
-            notify_handle = self.notify.getHandle() + 1
+        _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
+        notify_handle = self.notify.getHandle() + 1
 
-            _LOGGER.debug("Will write %s to %s handle", setup_data, notify_handle)
-            result = self._btle.writeCharacteristic(notify_handle, setup_data, withResponse=True)
-            _LOGGER.debug("Result is %s", result)
-            self._btle.withDelegate(self._delegation)
-            self.notify.read()
-        else:
-            result = True
-        return result
+        _LOGGER.debug("Will write %s to %s handle", setup_data, notify_handle)
+        result = self._btle.writeCharacteristic(notify_handle, setup_data, withResponse=True)
+        _LOGGER.debug("Result is %s", result)
+        self._btle.withDelegate(self._delegation)
+        self.notify.read()
 
     @property
     def fan_speed(self):

@@ -38,6 +38,10 @@ class s3(tion):
         self._productivity: int = 0
         self._fw_version: str = "unknown"
 
+        if self.mac == "dummy":
+            self._dummy_data = bytearray([0xb3, 0x10, 0x24, 0x14, 0x03, 0x00, 0x15, 0x14, 0x14, 0x8f, 0x00, 0x0c,
+                                          0x0a, 0x00, 0x4b, 0x0a, 0x00, 0x33, 0x00, 0x5a])
+
     def __try_get_state(self) -> bytearray:
         response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
         _LOGGER.debug("Response is %s", bytes(response).hex())
