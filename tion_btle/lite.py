@@ -81,7 +81,7 @@ class Lite(tion):
         self._request_id = header[7:10]  # must match self._sent_request_id
         self._command_number = header[11:14]
 
-    def collect_command(self, package: bytearray) -> bool:
+    def _collect_message(self, package: bytearray) -> bool:
         self._have_full_package = False
 
         _LOGGER.debug("Got %s from tion", bytes(package).hex())
@@ -153,7 +153,7 @@ class Lite(tion):
             i = 0
             while i < 10:
                 if self.mac == "dummy":
-                    while not self.collect_command(self.__try_get_state()):
+                    while not self._collect_message(self.__try_get_state()):
                         pass
                     else:
                         self._package_id = 0
@@ -162,7 +162,7 @@ class Lite(tion):
                 else:
                     if self._btle.waitForNotifications(1.0):
                         byte_response = self._delegation.data
-                        if self.collect_command(byte_response):
+                        if self._collect_message(byte_response):
                             self.have_breezer_state = True
                             break
                         i = 0
