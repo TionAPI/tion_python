@@ -123,7 +123,7 @@ class Lite(tion):
             return p
         return self.notify.read()
 
-    def _get_data_from_breezer(self, keep_connection: bool = False) -> bytearray:
+    def _get_data_from_breezer(self) -> bytearray:
         def generate_request_id() -> bytearray:
             self._sent_request_id = bytearray([0x0d, 0xd7, 0x1f, 0x8f])
             return self._sent_request_id
@@ -144,34 +144,29 @@ class Lite(tion):
 
         self.have_breezer_state = False
 
-        try:
-            self._do_action(self._connect)
-            self._enable_notifications()
-            self._do_action(self._try_write, request=create_request_params_command())
-            _LOGGER.debug("Collecting data")
+        self._do_action(self._try_write, request=create_request_params_command())
+        _LOGGER.debug("Collecting data")
 
-            i = 0
-            while i < 10:
-                if self.mac == "dummy":
-                    while not self._collect_message(self.__try_get_state()):
-                        pass
-                    else:
-                        self._package_id = 0
+        i = 0
+        while i < 10:
+            if self.mac == "dummy":
+                while not self._collect_message(self.__try_get_state()):
+                    pass
+                else:
+                    self._package_id = 0
+                    self.have_breezer_state = True
+                    break
+            else:
+                if self._btle.waitForNotifications(1.0):
+                    byte_response = self._delegation.data
+                    if self._collect_message(byte_response):
                         self.have_breezer_state = True
                         break
-                else:
-                    if self._btle.waitForNotifications(1.0):
-                        byte_response = self._delegation.data
-                        if self._collect_message(byte_response):
-                            self.have_breezer_state = True
-                            break
-                        i = 0
-                    i += 1
-            else:
-                _LOGGER.debug("Waiting too long for data")
-                self.notify.read()
-        finally:
-            self._disconnect()
+                    i = 0
+                i += 1
+        else:
+            _LOGGER.debug("Waiting too long for data")
+            self.notify.read()
 
         if self.have_breezer_state:
             result = self._data

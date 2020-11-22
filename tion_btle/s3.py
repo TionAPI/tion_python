@@ -69,30 +69,26 @@ class s3(tion):
         return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           self.command_suffix])
 
-    def _get_data_from_breezer(self, keep_connection=False) -> bytearray:
+    def _get_data_from_breezer(self) -> bytearray:
         def get_status_command() -> bytearray:
             return self.create_command(self.command_REQUEST_PARAMS)
 
         have_data_from_breezer: bool = False
-        try:
-            self._do_action(self._connect)
-            self._enable_notifications()
-            self._do_action(self._try_write, request=get_status_command())
 
-            i = 0
-            try:
-                while i < 10:
-                    if self._btle.waitForNotifications(1.0):
-                        have_data_from_breezer = True
-                        break
-                    i += 1
-                else:
-                    _LOGGER.debug("Waiting too long for data")
-                    self.notify.read()
-            except btle.BTLEDisconnectError as e:
-                _LOGGER.debug("Got %s while waiting for notification", str(e))
-        finally:
-            self._disconnect()
+        self._do_action(self._try_write, request=get_status_command())
+
+        i = 0
+        try:
+            while i < 10:
+                if self._btle.waitForNotifications(1.0):
+                    have_data_from_breezer = True
+                    break
+                i += 1
+            else:
+                _LOGGER.debug("Waiting too long for data")
+                self.notify.read()
+        except btle.BTLEDisconnectError as e:
+            _LOGGER.debug("Got %s while waiting for notification", str(e))
 
         if have_data_from_breezer:
             self._data = self._delegation.data

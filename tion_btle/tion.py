@@ -137,7 +137,7 @@ class tion(TionDummy):
         pass
 
     @abc.abstractmethod
-    def _get_data_from_breezer(self, keep_connection: bool = False) -> bytearray:
+    def _get_data_from_breezer(self) -> bytearray:
         """ Get byte array with brezer response on state request
         Returns:
           breezer response
@@ -210,7 +210,13 @@ class tion(TionDummy):
         :return:
           dictionary with device state
         """
-        response = self._get_data_from_breezer(keep_connection)
+        try:
+            self._connect()
+            response = self._get_data_from_breezer(keep_connection)
+        finally:
+            if not keep_connection:
+                self._disconnect()
+
         self._decode_response(response)
         self.__detect_heating_state()
         common = self.__generate_common_json()
@@ -234,13 +240,17 @@ class tion(TionDummy):
         except KeyError:
             pass
 
-        current_settings = self.get(True)
+        try:
+            self._connect()
+            current_settings = self.get(True)
 
-        merged_settings = {**current_settings, **new_settings}
+            merged_settings = {**current_settings, **new_settings}
 
-        encoded_request = self._encode_request(merged_settings)
-        _LOGGER.debug("Will write %s", encoded_request)
-        self._send_request(encoded_request)
+            encoded_request = self._encode_request(merged_settings)
+            _LOGGER.debug("Will write %s", encoded_request)
+            self._send_request(encoded_request)
+        finally:
+            self._disconnect()
 
     @property
     def mac(self):
@@ -291,6 +301,8 @@ class tion(TionDummy):
                         self.notify = tc
                     if tc.uuid == self.uuid_write:
                         self.write = tc
+
+                self._enable_notifications()
             except btle.BTLEDisconnectError as e:
                 _LOGGER.warning("Got %s exception", str(e))
                 time.sleep(2)
@@ -309,9 +321,6 @@ class tion(TionDummy):
         while tries < max_tries:
             _LOGGER.debug("Doing " + action.__name__ + ". Attempt " + str(tries + 1) + "/" + str(max_tries))
             try:
-                if action.__name__ != '_connect':
-                    self._connect()
-
                 response = action(*args, **kwargs)
                 break
             except Exception as e:
