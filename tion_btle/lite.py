@@ -300,6 +300,9 @@ class Lite(tion):
             _LOGGER.critical("Have no breezer state after get. Something went wrong!")
             raise RuntimeError("Have no breezer state after get.")
 
+        for key in request:
+            setattr(self, key, request[key])
+
         encoded_request = self._encode_request(request)
         _LOGGER.debug("Will write %s", encoded_request)
         self._send_request(encoded_request)
