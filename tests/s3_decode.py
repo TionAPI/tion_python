@@ -7,14 +7,14 @@ PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
-from tion_btle.s3 import s3
+from tion_btle.s3 import S3
 
 
 class TestLite(unittest.TestCase):
     data = bytearray()
 
     def test_decode(self):
-        self.lite = s3("dummy")
+        self.lite = S3("dummy")
         self.lite._decode_response(self.data)
         name_value = [
             ('state', 'on'),
@@ -26,7 +26,7 @@ class TestLite(unittest.TestCase):
             ('target_temp', 20),
             ('fan_speed', 4),
             ('_filter_remain', 143),
-            ('model', 's3'),
+            ('model', 'S3'),
         ]
         for s in name_value:
             with self.subTest(s[0]):

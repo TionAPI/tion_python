@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
-class s3(tion):
+class S3(tion):
     uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
     uuid_write = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
     uuid_notify = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
