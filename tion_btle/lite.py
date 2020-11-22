@@ -261,17 +261,20 @@ class Lite(tion):
                 else:
                     data_for_sent[i].insert(0, self.MIDDLE_PACKET_ID)
 
+        self.have_breezer_state = False
+
         for d in data_for_sent:
             _LOGGER.debug("Doing _try_write with request=%s", bytes(d).hex())
             self._do_action(self._try_write, request=d)
 
     def _encode_request(self, request: dict) -> bytearray:
         def encode_state():
-            result = self._state | (self._sound << 1) | (self._light << 2) | (self._heater << 4)
+            result = \
+                self._encode_state(request["status"]) | \
+                (self._encode_state(request["sound"]) << 1) | \
+                (self._encode_state(request["light"]) << 2) | \
+                (self._encode_state(request["heater"]) << 4)
             return result
-
-        for key in request:
-            setattr(self, key, request[key])
 
         sb = 0x00  # ??
         tb = 0x02 if (self.target_temp > 0 or self.fan_speed > 0) else 0x01
@@ -280,31 +283,6 @@ class Lite(tion):
         return bytearray(
             [0x00, 0x1e, 0x00, self.MAGIC_NUMBER, self.__random] +
             self.SET_PARAMS + self.__random4 + self.__random4 +
-            [encode_state(), sb, tb, self.target_temp, self.fan_speed] +
+            [encode_state(), sb, tb, int(request["heater_temp"]), int(request["fan_speed"])] +
             self.__presets + lb + [0x00] + self.CRC
         )
-
-    def set(self, request=None, need_update=True):
-
-        if request is None:
-            request = {}
-
-        if not self.have_breezer_state and not need_update:
-            _LOGGER.warning("Have no initial breezer state. Will run force update")
-            need_update = True
-
-        if need_update:
-            self._do_action(self.get, keep_connection=True)
-
-        if not self.have_breezer_state:
-            _LOGGER.critical("Have no breezer state after get. Something went wrong!")
-            raise RuntimeError("Have no breezer state after get.")
-
-        for key in request:
-            setattr(self, key, request[key])
-
-        encoded_request = self._encode_request(request)
-        _LOGGER.debug("Will write %s", encoded_request)
-        self._send_request(encoded_request)
-        self.have_breezer_state = False
-        return encoded_request

@@ -134,33 +134,14 @@ class s3(tion):
             "fw_version": self._fw_version,
         }
 
-    def set(self, request: dict, keep_connection=False):
-        def encode_request(request: dict) -> bytearray:
-            def encode_mode(mode: str) -> int:
-                return self.modes.index(mode) if mode in self.modes else 2
+    def _encode_request(self, request: dict) -> bytearray:
+        new_settings = self.create_command(self.command_SET_PARAMS)
+        new_settings[2] = int(request["fan_speed"])
+        new_settings[3] = int(request["heater_temp"])
+        new_settings[4] = self._encode_mode(request["mode"])
+        new_settings[5] = self._encode_status(request["heater"]) | (self._encode_status(request["status"]) << 1) | (
+                    self._encode_status(request["sound"]) << 3)
+        return new_settings
 
-            def encode_status(status: str) -> int:
-                return self.statuses.index(status) if status in self.statuses else 0
-
-            try:
-                if request["fan_speed"] == 0:
-                    del request["fan_speed"]
-                    request["status"] = "off"
-            except KeyError:
-                pass
-
-            settings = {**self.get(True), **request}
-            new_settings = self.create_command(self.command_SET_PARAMS)
-            new_settings[2] = int(settings["fan_speed"])
-            new_settings[3] = int(settings["heater_temp"])
-            new_settings[4] = encode_mode(settings["mode"])
-            new_settings[5] = encode_status(settings["heater"]) | (encode_status(settings["status"]) << 1) | (
-                        encode_status(settings["sound"]) << 3)
-            return new_settings
-        try:
-            self._do_action(self._connect)
-            self._do_action(self._try_write, request=encode_request(request))
-        except TionException as e:
-            _LOGGER.error(str(e))
-        finally:
-            self._disconnect()
+    def _send_request(self, request: bytearray) -> bytearray:
+        self._do_action(self._try_write, request=request)

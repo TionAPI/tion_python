@@ -218,6 +218,30 @@ class tion(TionDummy):
 
         return {**common, **model_specific_data}
 
+    def set(self, new_settings=None) -> None:
+        """
+        Set new breezer state
+        :param new_settings: json with new state
+        :return: None
+        """
+        if new_settings is None:
+            new_settings = {}
+
+        try:
+            if new_settings["fan_speed"] == 0:
+                del new_settings["fan_speed"]
+                new_settings["status"] = "off"
+        except KeyError:
+            pass
+
+        current_settings = self.get(True)
+
+        merged_settings = {**current_settings, **new_settings}
+
+        encoded_request = self._encode_request(merged_settings)
+        _LOGGER.debug("Will write %s", encoded_request)
+        self._send_request(encoded_request)
+
     @property
     def mac(self):
         return self._mac
@@ -412,3 +436,19 @@ class tion(TionDummy):
     @property
     def model(self) -> str:
         return self._model
+
+    def _encode_status(self, status: str) -> int:
+        """
+        Encode string status () to int
+        :param status: one of:  "on", "off"
+        :return: integer equivalent of state
+        """
+        return self.statuses.index(status) if status in self.statuses else 0
+
+    def _encode_mode(self, mode: str) -> int:
+        """
+        Encode string mode to integer
+        :param mode: one of self.modes + any other as outside
+        :return: integer equivalent of mode
+        """
+        return self.modes.index(mode) if mode in self.modes else 2
