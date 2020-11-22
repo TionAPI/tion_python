@@ -36,7 +36,38 @@ class TionException(Exception):
         self.message = message
 
 
-class tion:
+class TionDummy:
+    """
+    Class for dummy methods, that should be used for tests
+    """
+
+    _dummy_data: bytearray
+
+    @staticmethod
+    def _connect_dummy():
+        """dummy connection"""
+
+        _LOGGER.info("Dummy connect")
+        return
+
+    @staticmethod
+    def _disconnect_dummy():
+        return
+
+    def _get_data_from_breezer_dummy(self, keep_connection: bool = False) -> bytearray:
+        return self._dummy_data
+
+    @staticmethod
+    def _try_write_dummy(request: bytearray):
+        _LOGGER.debug("Dummy write %s", bytes(request).hex())
+        return
+
+    @staticmethod
+    def _enable_notifications_dummy():
+        return
+
+
+class tion(TionDummy):
     statuses = ['off', 'on']
     modes = ['recirculation', 'mixed']  # 'recirculation', 'mixed' and 'outside', as Index exception
     uuid_notify: str = ""
@@ -112,9 +143,6 @@ class tion:
           breezer response
         """
         raise NotImplementedError()
-
-    def _get_data_from_breezer_dummy(self, keep_connection: bool = False) -> bytearray:
-        return self._dummy_data
 
     @abc.abstractmethod
     def _generate_model_specific_json(self) -> dict:
@@ -230,13 +258,6 @@ class tion:
 
         return connection_status
 
-    @staticmethod
-    def _connect_dummy():
-        """dummy connection"""
-
-        _LOGGER.info("Dummy connect")
-        return
-
     def _connect(self):
         if self.connection_status == "disc":
             try:
@@ -251,18 +272,9 @@ class tion:
                 time.sleep(2)
                 raise e
 
-    @staticmethod
-    def _disconnect_dummy():
-        return
-
     def _disconnect(self):
         if self.connection_status != "disc":
             self._btle.disconnect()
-
-    @staticmethod
-    def _try_write_dummy(request: bytearray):
-        _LOGGER.debug("Dummy write %s", bytes(request).hex())
-        return
 
     def _try_write(self, request: bytearray):
         _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.write.uuid)
@@ -295,10 +307,6 @@ class tion:
             raise TionException(action.__name__, message)
 
         return response
-
-    @staticmethod
-    def _enable_notifications_dummy():
-        return
 
     def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
