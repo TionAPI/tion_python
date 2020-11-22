@@ -257,7 +257,7 @@ class tion(TionDummy):
         return self._mac
 
     @staticmethod
-    def decode_temperature(raw: bytes) -> int:
+    def decode_temperature(raw: int) -> int:
         """ Converts temperature from bytes with addition code to int
         Args:
           raw: raw temperature value from Tion
@@ -265,8 +265,7 @@ class tion(TionDummy):
           Integer value for temperature
         """
         barrier = 0b10000000
-        raw_int = int(raw)
-        return raw_int if raw_int < barrier else -(~(raw_int - barrier) + barrier + 1)
+        return raw if raw < barrier else -(~(raw - barrier) + barrier + 1)
 
     def _process_status(self, code: int) -> str:
         try:
