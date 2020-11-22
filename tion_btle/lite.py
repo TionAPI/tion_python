@@ -171,7 +171,7 @@ class Lite(tion):
         if self.have_breezer_state:
             result = self._data
         else:
-            raise TionException("Could not get breezer state")
+            raise TionException("Lite _get_data_from_breezer", "Could not get breezer state")
 
         return result
 
@@ -202,7 +202,9 @@ class Lite(tion):
             # self._max_fan = data[54]
             # self._heater_percent = data[55]
         except IndexError as e:
-            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
+            raise TionException(
+                "Lite _decode_response", "Got bad response from Tion '%s': %s while parsing" % (response, str(e))
+            )
 
     def _generate_model_specific_json(self) -> dict:
         return {

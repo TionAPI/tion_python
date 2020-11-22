@@ -93,7 +93,7 @@ class s3(tion):
             result = self._data
 
         else:
-            raise TionException("Could not get breezer state")
+            raise TionException("s3 _get_data_from_breezer", "Could not get breezer state")
 
         return result
 
@@ -117,7 +117,7 @@ class s3(tion):
             self._fw_version = "{:02x}{:02x}".format(response[18], response[17])
 
         except IndexError as e:
-            raise TionException("Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
+            raise TionException("s3 _decode_response", "Got bad response from Tion '%s': %s while parsing" % (response, str(e)))
 
     def _generate_model_specific_json(self) -> dict:
         return {
