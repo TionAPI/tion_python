@@ -1,5 +1,4 @@
 import logging
-from typing import Callable
 
 if __package__ == "":
     from tion_btle.tion import tion, TionException
@@ -7,7 +6,6 @@ else:
     from .tion import tion, TionException
 
 from bluepy import btle
-import time
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
