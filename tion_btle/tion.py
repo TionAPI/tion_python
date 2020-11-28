@@ -54,7 +54,7 @@ class TionDummy:
     def _disconnect_dummy():
         return
 
-    def _get_data_from_breezer_dummy(self, keep_connection: bool = False) -> bytearray:
+    def _get_data_from_breezer_dummy(self) -> bytearray:
         return self._dummy_data
 
     @staticmethod
@@ -212,7 +212,7 @@ class tion(TionDummy):
         """
         try:
             self._connect()
-            response = self._get_data_from_breezer(keep_connection)
+            response = self._get_data_from_breezer()
         finally:
             if not keep_connection:
                 self._disconnect()
