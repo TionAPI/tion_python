@@ -1,7 +1,7 @@
 import abc
 import logging
 import time
-from typing import Callable
+from typing import Callable, List
 from time import localtime, strftime
 
 from bluepy import btle
@@ -12,11 +12,11 @@ _LOGGER = logging.getLogger(__name__)
 
 class TionDelegation(DefaultDelegate):
     def __init__(self):
-        self._data = None
+        self._data: List = []
         DefaultDelegate.__init__(self)
 
     def handleNotification(self, handle: int, data: bytes):
-        self._data = data
+        self._data.append(data)
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
 
     def handleDiscovery(self, dev, isNewDev, isNewData):
@@ -27,7 +27,11 @@ class TionDelegation(DefaultDelegate):
 
     @property
     def data(self) -> bytes:
-        return self._data
+        return self._data.pop(0)
+
+    @property
+    def haveNewData(self) -> bool:
+        return len(self._data) > 0
 
 
 class TionException(Exception):
