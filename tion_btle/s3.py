@@ -83,7 +83,7 @@ class S3(tion):
                     have_data_from_breezer = True
                     break
                 else:
-                    time.sleep(1)
+                    self._btle.waitForNotifications(1.0)
                 i += 1
             else:
                 _LOGGER.debug("Waiting too long for data")
