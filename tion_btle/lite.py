@@ -1,4 +1,5 @@
 import logging
+import time
 from random import randrange
 
 
@@ -157,12 +158,14 @@ class Lite(tion):
                     self.have_breezer_state = True
                     break
             else:
-                if self._btle.waitForNotifications(1.0):
+                if self._delegation.haveNewData:
                     byte_response = self._delegation.data
                     if self._collect_message(byte_response):
                         self.have_breezer_state = True
                         break
                     i = 0
+                else:
+                    time.sleep(1)
                 i += 1
         else:
             _LOGGER.debug("Waiting too long for data")
