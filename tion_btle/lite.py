@@ -1,5 +1,4 @@
 import logging
-import time
 from random import randrange
 
 
@@ -165,7 +164,7 @@ class Lite(tion):
                         break
                     i = 0
                 else:
-                    time.sleep(1)
+                    self._btle.waitForNotifications(1.0)
                 i += 1
         else:
             _LOGGER.debug("Waiting too long for data")
