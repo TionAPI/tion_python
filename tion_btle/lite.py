@@ -269,7 +269,7 @@ class Lite(tion):
     def _encode_request(self, request: dict) -> bytearray:
         def encode_state():
             result = \
-                self._encode_state(request["status"]) | \
+                self._encode_state(request["state"]) | \
                 (self._encode_state(request["sound"]) << 1) | \
                 (self._encode_state(request["light"]) << 2) | \
                 (self._encode_state(request["heater"]) << 4)
