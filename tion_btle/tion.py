@@ -13,17 +13,22 @@ _LOGGER = logging.getLogger(__name__)
 class TionDelegation(DefaultDelegate):
     def __init__(self):
         self._data: List = []
+        self.__topic = None
         DefaultDelegate.__init__(self)
 
     def handleNotification(self, handle: int, data: bytes):
         self._data.append(data)
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
+        self.__topic.read()
 
     def handleDiscovery(self, dev, isNewDev, isNewData):
         if isNewDev:
             _LOGGER.debug("Discovered device %s", dev.addr)
         elif isNewData:
             _LOGGER.debug("Received new data from %s", dev.addr)
+
+    def setReadTopic(self, topic):
+        self.__topic = topic
 
     @property
     def data(self) -> bytes:
@@ -356,6 +361,7 @@ class tion(TionDummy):
         _LOGGER.debug("Result is %s", result)
         self._btle.withDelegate(self._delegation)
         self.notify.read()
+        self._delegation.setReadTopic(self.notify)
 
     @property
     def fan_speed(self):
