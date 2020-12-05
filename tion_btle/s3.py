@@ -137,5 +137,5 @@ class S3(tion):
                     self._encode_status(request["sound"]) << 3)
         return new_settings
 
-    def _send_request(self, request: bytearray) -> bytearray:
+    def _send_request(self, request: bytearray):
         self._do_action(self._try_write, request=request)

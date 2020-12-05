@@ -113,7 +113,7 @@ class tion(TionDummy):
             self._get_data_from_breezer = self._get_data_from_breezer_dummy
 
     @abc.abstractmethod
-    def _send_request(self, request: bytearray) -> bytearray:
+    def _send_request(self, request: bytearray):
         """ Send request to device
 
         Args:
