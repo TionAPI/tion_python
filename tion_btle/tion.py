@@ -245,7 +245,7 @@ class tion(TionDummy):
         try:
             if new_settings["fan_speed"] == 0:
                 del new_settings["fan_speed"]
-                new_settings["status"] = "off"
+                new_settings["state"] = "off"
         except KeyError:
             pass
 

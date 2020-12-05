@@ -133,7 +133,7 @@ class S3(tion):
         new_settings[2] = int(request["fan_speed"])
         new_settings[3] = int(request["heater_temp"])
         new_settings[4] = self._encode_mode(request["mode"])
-        new_settings[5] = self._encode_status(request["heater"]) | (self._encode_status(request["status"]) << 1) | (
+        new_settings[5] = self._encode_status(request["heater"]) | (self._encode_status(request["state"]) << 1) | (
                     self._encode_status(request["sound"]) << 3)
         return new_settings
 
