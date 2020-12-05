@@ -40,21 +40,26 @@ class S3(tion):
             self._dummy_data = bytearray([0xb3, 0x10, 0x24, 0x14, 0x03, 0x00, 0x15, 0x14, 0x14, 0x8f, 0x00, 0x0c,
                                           0x0a, 0x00, 0x4b, 0x0a, 0x00, 0x33, 0x00, 0x5a])
 
+    @property
+    def pair_command(self) -> bytearray:
+        return self.create_command(self.command_PAIR)
+
+    @property
+    def get_status_command(self) -> bytearray:
+        return self.create_command(self.command_REQUEST_PARAMS)
+
     def __try_get_state(self) -> bytearray:
         response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
         _LOGGER.debug("Response is %s", bytes(response).hex())
         return response
 
     def pair(self):
-        def get_pair_command() -> bytearray:
-            return self.create_command(self.command_PAIR)
-
         _LOGGER.setLevel("DEBUG")
         _LOGGER.debug("Pairing")
         _LOGGER.debug("Connecting")
         self._do_action(self._connect)
         _LOGGER.debug("Sending pair command")
-        self._send_request(get_pair_command())
+        self._send_request(self.pair_command)
         _LOGGER.debug("Disconnecting")
         self._disconnect()
         _LOGGER.debug("Done!")
@@ -65,12 +70,8 @@ class S3(tion):
                           self.command_suffix])
 
     def _get_data_from_breezer(self) -> bytearray:
-        def get_status_command() -> bytearray:
-            return self.create_command(self.command_REQUEST_PARAMS)
-
         have_data_from_breezer: bool = False
-
-        self._do_action(self._try_write, request=get_status_command())
+        self._do_action(self._try_write, request=self.get_status_command)
 
         i = 0
         try:
