@@ -1,5 +1,4 @@
 import logging
-import time
 
 if __package__ == "":
     from tion_btle.tion import tion, TionException
@@ -49,16 +48,13 @@ class S3(tion):
     def pair(self):
         def get_pair_command() -> bytearray:
             return self.create_command(self.command_PAIR)
+
         _LOGGER.setLevel("DEBUG")
         _LOGGER.debug("Pairing")
         _LOGGER.debug("Connecting")
         self._do_action(self._connect)
-        _LOGGER.debug("Collecting characteristic")
-        characteristic = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0]
-        _LOGGER.debug("Got characteristic %s for pairing", str(characteristic))
-        pair_command = get_pair_command()
-        _LOGGER.debug("Sending pair command %s to %s", bytes(pair_command).hex(), str(characteristic))
-        characteristic.write(bytes(get_pair_command()))
+        _LOGGER.debug("Sending pair command")
+        self._send_request(get_pair_command())
         _LOGGER.debug("Disconnecting")
         self._disconnect()
         _LOGGER.debug("Done!")
