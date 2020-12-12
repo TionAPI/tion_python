@@ -285,3 +285,7 @@ class Lite(tion):
             [encode_state(), sb, tb, int(request["heater_temp"]), int(request["fan_speed"])] +
             self.__presets + lb + [0x00] + self.CRC
         )
+
+    def _pair(self):
+        """Lite is not require special pairing procedure"""
+        return
