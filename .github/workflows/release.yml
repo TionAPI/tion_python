@@ -1,11 +1,9 @@
 name: Create release
 
 on:
-  workflow_run:
-    workflows: ["CI tests"]
-    branch: ["master"]
-    types: 
-      - completed  
+ push:
+    branches:
+      - master
 
 jobs:
   changes:
@@ -33,7 +31,7 @@ jobs:
 
   release:
     name: "Create release"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ needs.changes.outputs.skipped == 'false' }} 
+    if: ${{ needs.changes.outputs.skipped == 'false' }} 
     needs: changes
     
     runs-on: ubuntu-latest
@@ -52,7 +50,7 @@ jobs:
   publish:
     name: "Publish at PyPi"
     needs: changes
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ needs.changes.outputs.skipped == 'false' }} 
+    if: ${{ needs.changes.outputs.skipped == 'false' }} 
     runs-on: ubuntu-latest
 
     steps:
