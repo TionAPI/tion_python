@@ -7,8 +7,7 @@ on:
 
 jobs:
   changes:
-    name: "Create changelog and tag"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: "Create changelog and tag"    
     runs-on: ubuntu-latest
     outputs:
       skipped: ${{ steps.changelog.outputs.skipped }}
@@ -30,10 +29,9 @@ jobs:
         skip-commit: "true"
 
   release:
-    name: "Create release"
-    if: ${{ needs.changes.outputs.skipped == 'false' }} 
+    name: "Create release"    
     needs: changes
-    
+    if: ${{ needs.changes.outputs.skipped == 'false' }}     
     runs-on: ubuntu-latest
 
     steps:      
@@ -50,7 +48,7 @@ jobs:
   publish:
     name: "Publish at PyPi"
     needs: changes
-    if: ${{ needs.changes.outputs.skipped == 'false' }} 
+    if: ${{ needs.changes.outputs.skipped == 'false' }}
     runs-on: ubuntu-latest
 
     steps:
