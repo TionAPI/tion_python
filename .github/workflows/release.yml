@@ -5,13 +5,12 @@ on:
     workflows: ["CI tests"]
     branch: ["master"]
     types: 
-      - completed
-  workflow_dispatch:
+      - completed  
 
 jobs:
   changes:
     name: "Create changelog and tag"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} || ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       skipped: ${{ steps.changelog.outputs.skipped }}
@@ -34,7 +33,7 @@ jobs:
 
   release:
     name: "Create release"
-    if: ( ${{ github.event.workflow_run.conclusion == 'success' }} || ${{ github.event_name == 'workflow_dispatch' }} ) && ${{ needs.changes.outputs.skipped == 'false' }} 
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ needs.changes.outputs.skipped == 'false' }} 
     needs: changes
     
     runs-on: ubuntu-latest
@@ -53,7 +52,7 @@ jobs:
   publish:
     name: "Publish at PyPi"
     needs: changes
-    if: ( ${{ github.event.workflow_run.conclusion == 'success' }} || ${{ github.event_name == 'workflow_dispatch' }} ) && ${{ needs.changes.outputs.skipped == 'false' }} 
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ needs.changes.outputs.skipped == 'false' }} 
     runs-on: ubuntu-latest
 
     steps:
