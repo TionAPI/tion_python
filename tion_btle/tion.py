@@ -21,12 +21,6 @@ class TionDelegation(DefaultDelegate):
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
         self.__topic.read()
 
-    def handleDiscovery(self, dev, isNewDev, isNewData):
-        if isNewDev:
-            _LOGGER.debug("Discovered device %s", dev.addr)
-        elif isNewData:
-            _LOGGER.debug("Received new data from %s", dev.addr)
-
     def setReadTopic(self, topic):
         self.__topic = topic
 
