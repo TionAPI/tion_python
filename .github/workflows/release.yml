@@ -31,7 +31,7 @@ jobs:
   release:
     name: "Create release"
     needs: changes
-    if: ${{ needs.changes.outputs.skipped == 'false' }}     
+    if: ${{ needs.changes.outputs.skipped == 'false' }}
     runs-on: ubuntu-latest
 
     steps:      
