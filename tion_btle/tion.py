@@ -463,3 +463,28 @@ class tion(TionDummy):
         :return: integer equivalent of mode
         """
         return self.modes.index(mode) if mode in self.modes else 2
+
+    def pair(self):
+        _LOGGER.debug("Pairing")
+        self._connect()
+        _LOGGER.debug("Connected. BT pairing ...")
+        try:
+            # use private methods to avoid disconnect if already paired
+            self._btle._writeCmd('pair' + '\n')
+            rsp = self._btle._waitResp('mgmt')
+            if rsp['estat'][0] == 0 or rsp['estat'][0] == 19 or rsp['code'][0] == 'success':
+                _LOGGER.debug(rsp['emsg'][0])
+            else:
+                _LOGGER.warning("Unexpected response: %s(%d)", rsp['emsg'][0], rsp['estat'][0])
+                raise TionException(rsp['estat'][0], rsp['emsg'][0])
+            # device-specific pairing
+            _LOGGER.debug("Device-specific pairing ...")
+            self._pair()
+            _LOGGER.debug("Device pair is done")
+        finally:
+            _LOGGER.debug("disconnected")
+            self._disconnect()
+
+    @abc.abstractmethod
+    def _pair(self):
+        """Perform model-specific pair steps"""

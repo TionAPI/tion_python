@@ -53,15 +53,9 @@ class S3(tion):
         _LOGGER.debug("Response is %s", bytes(response).hex())
         return response
 
-    def pair(self):
-        _LOGGER.setLevel("DEBUG")
-        _LOGGER.debug("Pairing")
-        _LOGGER.debug("Connecting")
-        self._do_action(self._connect)
+    def _pair(self):
         _LOGGER.debug("Sending pair command")
         self._send_request(self.pair_command)
-        _LOGGER.debug("Disconnecting")
-        self._disconnect()
         _LOGGER.debug("Done!")
 
     def create_command(self, command: int) -> bytearray:
