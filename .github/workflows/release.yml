@@ -7,7 +7,7 @@ on:
 
 jobs:
   changes:
-    name: "Create changelog and tag"    
+    name: "Create changelog and tag"
     runs-on: ubuntu-latest
     outputs:
       skipped: ${{ steps.changelog.outputs.skipped }}
@@ -29,7 +29,7 @@ jobs:
         skip-commit: "true"
 
   release:
-    name: "Create release"    
+    name: "Create release"
     needs: changes
     if: ${{ needs.changes.outputs.skipped == 'false' }}     
     runs-on: ubuntu-latest
