@@ -7,7 +7,7 @@ on:
 jobs:
   # This workflow contains a single job called "build"
   tests:
-    name: Run tests
+    name: Run tests for python ${{matrix.python}}
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     strategy:
