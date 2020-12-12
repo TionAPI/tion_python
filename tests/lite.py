@@ -7,6 +7,9 @@ _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel("DEBUG")
 try:
     mac = sys.argv[1]
+    if mac == 'discover':
+        _LOGGER.debug("%s", sys.argv)
+        mac = 'dummy'
 except IndexError:
     mac = "dummy"
 
