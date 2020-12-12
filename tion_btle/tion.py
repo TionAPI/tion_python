@@ -345,17 +345,16 @@ class tion(TionDummy):
 
     def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
-        setup_data = b"\x01\x00"
-
-        _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
-        notify_handle = self.notify.getHandle() + 1
-
-        _LOGGER.debug("Will write %s to %s handle", setup_data, notify_handle)
-        result = self._btle.writeCharacteristic(notify_handle, setup_data, withResponse=True)
-        _LOGGER.debug("Result is %s", result)
         self._btle.withDelegate(self._delegation)
-        self.notify.read()
+        _LOGGER.debug("Delegation enabled")
+        try:
+            self.notify.read()
+            _LOGGER.debug("First read done")
+        except Exception as e:
+            _LOGGER.warning("Got exception '%s' while first read, but it is OK and we may ignore it", str(e))
+
         self._delegation.setReadTopic(self.notify)
+        _LOGGER.debug("enable_notification is done")
 
     @property
     def fan_speed(self):
