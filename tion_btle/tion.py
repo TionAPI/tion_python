@@ -472,15 +472,29 @@ class tion(TionDummy):
             # use private methods to avoid disconnect if already paired
             self._btle._writeCmd('pair' + '\n')
             rsp = self._btle._waitResp('mgmt')
-            if rsp['estat'][0] == 0 or rsp['estat'][0] == 19 or rsp['code'][0] == 'success':
-                _LOGGER.debug(rsp['emsg'][0])
+            _LOGGER.debug("Got response while sending pair command: %s", rsp)
+            try:
+                estat = rsp['estat'][0]
+            except KeyError:
+                # we may have no estat in response. It is OK.
+                estat = 0
+            # 0 -- fine, 19 -- paired.
+            if estat == 0 or estat == 19 or rsp['code'][0] == 'success':
+                try:
+                    msg = rsp['emsg'][0]
+                except KeyError:
+                    msg = rsp['code'][0]
+                _LOGGER.debug(msg)
             else:
-                _LOGGER.warning("Unexpected response: %s(%d)", rsp['emsg'][0], rsp['estat'][0])
-                raise TionException(rsp['estat'][0], rsp['emsg'][0])
+                _LOGGER.critical("Unexpected response: %s", rsp)
+                raise TionException('pair', rsp)
             # device-specific pairing
             _LOGGER.debug("Device-specific pairing ...")
             self._pair()
             _LOGGER.debug("Device pair is done")
+        except Exception as e:
+            _LOGGER.critical(f"Got exception while pair {type(e).__name__}: {str(e)}")
+            raise TionException('pair', f"{type(e).__name__}: {str(e)}")
         finally:
             _LOGGER.debug("disconnected")
             self._disconnect()
