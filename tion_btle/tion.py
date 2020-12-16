@@ -348,8 +348,8 @@ class tion(TionDummy):
         self._btle.withDelegate(self._delegation)
         _LOGGER.debug("Delegation enabled")
         try:
-            self.notify.read()
-            _LOGGER.debug("First read done")
+            data = self.notify.read()
+            _LOGGER.debug("First read done. Data is %s", bytes(data).hex())
         except Exception as e:
             _LOGGER.warning("Got exception '%s' while first read, but it is OK and we may ignore it", str(e))
 
