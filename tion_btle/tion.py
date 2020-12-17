@@ -358,8 +358,9 @@ class tion(TionDummy):
         try:
             data = self.notify.read()
             _LOGGER.debug("First read done. Data is %s", bytes(data).hex())
-        except Exception as e:
-            _LOGGER.warning("Got exception '%s' while first read, but it is OK and we may ignore it", str(e))
+        except btle.BTLEDisconnectError as e:
+            _LOGGER.critical("_enable_notifications: got '%s' while first read! Could not continue!", str(e))
+            raise e
 
         self._delegation.setReadTopic(self.notify)
         _LOGGER.debug("enable_notification is done")
