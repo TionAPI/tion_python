@@ -487,8 +487,13 @@ class tion(TionDummy):
             except KeyError:
                 # we may have no estat in response. It is OK.
                 estat = 0
-            # 0 -- fine, 19 -- paired.
-            if estat == 0 or estat == 19 or rsp['code'][0] == 'success':
+
+            if estat == 20:
+                # it seem in https://github.com/TionAPI/tion_python/issues/17 that we may ignore it.
+                _LOGGER.warning("bt pairing: could not pair! Permission denied. Check permissions at host. "
+                                "Ignore it if all goes well")
+            elif estat == 0 or estat == 19 or rsp['code'][0] == 'success':
+                # 0 -- fine, no errors; 19 -- paired.
                 try:
                     msg = rsp['emsg'][0]
                 except KeyError:
