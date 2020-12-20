@@ -47,7 +47,7 @@ class TionDummy:
     _dummy_data: bytearray
 
     @staticmethod
-    def _connect_dummy():
+    def _connect_dummy(need_notifications: bool = True):
         """dummy connection"""
 
         _LOGGER.info("Dummy connect")
@@ -294,7 +294,7 @@ class tion(TionDummy):
 
         return connection_status
 
-    def _connect(self):
+    def _connect(self, need_notifications: bool = True):
         if self.connection_status == "disc":
             try:
                 self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
@@ -303,8 +303,10 @@ class tion(TionDummy):
                         self.notify = tc
                     if tc.uuid == self.uuid_write:
                         self.write = tc
-
-                self._enable_notifications()
+                if need_notifications:
+                    self._enable_notifications()
+                else:
+                    _LOGGER.debug("Notifications was not requested")
             except btle.BTLEDisconnectError as e:
                 _LOGGER.warning("Got %s exception", str(e))
                 time.sleep(2)
@@ -475,7 +477,7 @@ class tion(TionDummy):
 
     def pair(self):
         _LOGGER.debug("Pairing")
-        self._connect()
+        self._connect(need_notifications=False)
         _LOGGER.debug("Connected. BT pairing ...")
         try:
             # use private methods to avoid disconnect if already paired
