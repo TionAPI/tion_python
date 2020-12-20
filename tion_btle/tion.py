@@ -96,6 +96,7 @@ class tion(TionDummy):
         self._heating: bool = False
         self._filter_remain: float = 0.0
         self._error_code: int = 0
+        self.__failed_connects: int = 0
 
         if self.mac == "dummy":
             _LOGGER.warning("Dummy mode detected!")
@@ -295,6 +296,7 @@ class tion(TionDummy):
         return connection_status
 
     def _connect(self, need_notifications: bool = True):
+        _LOGGER.debug("Connecting")
         if self.connection_status == "disc":
             try:
                 self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
@@ -307,10 +309,16 @@ class tion(TionDummy):
                     self._enable_notifications()
                 else:
                     _LOGGER.debug("Notifications was not requested")
+                self.__failed_connects = 0
             except btle.BTLEDisconnectError as e:
-                _LOGGER.warning("Got %s exception", str(e))
-                time.sleep(2)
-                raise e
+                _LOGGER.warning("Got BTLEDisconnectError:%s", str(e))
+                if self.__failed_connects < 1:
+                    self.__failed_connects += 1
+                    _LOGGER.debug("Will try again.")
+                    time.sleep(2)
+                    self._connect(need_notifications)
+                else:
+                    raise e
 
     def _disconnect(self):
         if self.connection_status != "disc":
