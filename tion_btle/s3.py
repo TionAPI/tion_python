@@ -95,7 +95,7 @@ class S3(tion):
         _LOGGER.debug("Data is %s", bytes(response).hex())
         try:
             self._fan_speed = int(list("{:02x}".format(response[2]))[1])
-            self._mode = response[2]
+            self._mode = int(list("{:02x}".format(response[2]))[0])
             self._heater = response[4] & 1
             self._state = response[4] >> 1 & 1
             self._target_temp = response[3]
