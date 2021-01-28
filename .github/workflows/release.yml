@@ -71,7 +71,7 @@ jobs:
     - name: Set version
       env:
         VERSION: ${{ needs.changes.outputs.tag }}
-      run: echo "VERSION = '${VERSION##v}'" > tion_btle/const.py
+      run: sed --in-place -e "s/%%%VERSION%%%/${VERSION##v}/" setup.py
 
     - name: Build
       run: python setup.py sdist bdist_wheel
