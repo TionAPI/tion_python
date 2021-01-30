@@ -97,6 +97,7 @@ class tion(TionDummy):
         self._filter_remain: float = 0.0
         self._error_code: int = 0
         self.__failed_connects: int = 0
+        self.__connections_count: int = 0
 
         if self.mac == "dummy":
             _LOGGER.warning("Dummy mode detected!")
@@ -215,11 +216,14 @@ class tion(TionDummy):
           dictionary with device state
         """
         try:
-            self._connect()
+            self.connect()
             response = self._get_data_from_breezer()
         finally:
             if not keep_connection:
-                self._disconnect()
+                self.disconnect()
+            else:
+                _LOGGER.warning("You are using keep_connection parameter of get method. It will be removed in v2.0.0")
+                self.__connections_count -= 1
 
         self._decode_response(response)
         self.__detect_heating_state()
@@ -245,8 +249,8 @@ class tion(TionDummy):
             pass
 
         try:
-            self._connect()
-            current_settings = self.get(True)
+            self.connect()
+            current_settings = self.get()
 
             merged_settings = {**current_settings, **new_settings}
 
@@ -254,7 +258,7 @@ class tion(TionDummy):
             _LOGGER.debug("Will write %s", encoded_request)
             self._send_request(encoded_request)
         finally:
-            self._disconnect()
+            self.disconnect()
 
     @property
     def mac(self):
@@ -526,3 +530,17 @@ class tion(TionDummy):
     @abc.abstractmethod
     def _pair(self):
         """Perform model-specific pair steps"""
+
+    def connect(self):
+        if self.__connections_count < 0:
+            self.__connections_count = 0
+
+        if self.__connections_count == 0:
+            self._connect()
+
+        self.__connections_count += 1
+
+    def disconnect(self):
+        self.__connections_count -= 1
+        if self.__connections_count <= 0:
+            self._disconnect()
