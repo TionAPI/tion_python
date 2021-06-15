@@ -19,7 +19,10 @@ class TionDelegation(DefaultDelegate):
     def handleNotification(self, handle: int, data: bytes):
         self._data.append(data)
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
-        self.__topic.read()
+        try:
+            self.__topic.read()
+        except btle.BTLEDisconnectError as e:
+            _LOGGER.warning("Got %s while read in handleNotification. May continue working.", str(e))
 
     def setReadTopic(self, topic):
         self.__topic = topic
@@ -102,7 +105,6 @@ class tion(TionDummy):
 
         if self.mac == "dummy":
             _LOGGER.warning("Dummy mode detected!")
-            self._dummy_data: bytearray = bytearray()
             self._connect = self._connect_dummy
             self._disconnect = self._disconnect_dummy
             self._try_write = self._try_write_dummy
