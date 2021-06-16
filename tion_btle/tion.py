@@ -368,7 +368,7 @@ class tion(TionDummy):
         notify_handle = self.notify.getHandle() + 1
 
         _LOGGER.debug("Will write %s to %s handle", data, notify_handle)
-        result = self._btle.writeCharacteristic(notify_handle, data, withResponse=True)
+        result = self._btle.writeCharacteristic(notify_handle, data, withResponse=False)
         _LOGGER.debug("Result is %s", result)
 
     def _enable_notifications(self):
