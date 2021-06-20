@@ -92,37 +92,6 @@ class LiteFamily(tion):
 
         return self._have_full_package
 
-    def _get_data_from_breezer(self) -> bytearray:
-        self.have_breezer_state = False
-
-        _LOGGER.debug("Collecting data")
-
-        i = 0
-
-        while i < 10:
-            if self.mac == "dummy":
-                return self._dummy_data
-            else:
-                if self._delegation.haveNewData:
-                    byte_response = self._delegation.data
-                    if self._collect_message(byte_response):
-                        self.have_breezer_state = True
-                        break
-                    i = 0
-                else:
-                    self._btle.waitForNotifications(1.0)
-                i += 1
-        else:
-            _LOGGER.debug("Waiting too long for data")
-            self.notify.read()
-
-        if self.have_breezer_state:
-            result = self._data
-        else:
-            raise TionException("_get_data_from_breezer", "Could not get breezer state")
-
-        return result
-
     def _send_request(self, request: bytearray):
         def chunks(lst, n):
             """Yield successive n-sized chunks from lst."""
