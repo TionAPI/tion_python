@@ -105,7 +105,7 @@ class LiteFamily(tion):
 
     def _get_data_from_breezer(self) -> bytearray:
         self.have_breezer_state = False
-        self._try_write(request=self.create_request_params_command)
+        self._try_write(request=self.command_getStatus)
         _LOGGER.debug("Collecting data")
 
         i = 0
@@ -186,11 +186,6 @@ class LiteFamily(tion):
 
     @abc.abstractmethod
     def _generate_model_specific_json(self) -> dict:
-        raise NotImplementedError()
-
-    @property
-    @abc.abstractmethod
-    def create_request_params_command(self) -> bytearray:
         raise NotImplementedError()
 
     @property

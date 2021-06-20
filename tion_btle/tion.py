@@ -559,3 +559,8 @@ class tion(TionDummy):
         self.__connections_count -= 1
         if self.__connections_count <= 0:
             self._disconnect()
+
+    @property
+    @abc.abstractmethod
+    def command_getStatus(self) -> bytearray:
+        raise NotImplementedError()

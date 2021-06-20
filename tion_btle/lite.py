@@ -55,7 +55,7 @@ class Lite(LiteFamily):
         self._command_number = header[11:14]
 
     @property
-    def create_request_params_command(self) -> bytearray:
+    def command_getStatus(self) -> bytearray:
         def generate_request_id() -> bytearray:
             self._sent_request_id = bytearray([0x0d, 0xd7, 0x1f, 0x8f])
             return self._sent_request_id
