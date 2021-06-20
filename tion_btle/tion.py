@@ -364,11 +364,12 @@ class tion(TionDummy):
         return response
 
     def __write_to_notify_handle(self, data):
+        need_response: bool = True if self.model == "Lite" else False
         _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
         notify_handle = self.notify.getHandle() + 1
 
-        _LOGGER.debug("Will write %s to %s handle", data, notify_handle)
-        result = self._btle.writeCharacteristic(notify_handle, data, withResponse=False)
+        _LOGGER.debug("Will write %s to %s handle with withResponse=%s", data, notify_handle, need_response)
+        result = self._btle.writeCharacteristic(notify_handle, data, withResponse=need_response)
         _LOGGER.debug("Result is %s", result)
 
     def _enable_notifications(self):
