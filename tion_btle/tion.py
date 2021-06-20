@@ -30,11 +30,11 @@ def retry(retries: int = 3):
 
 class TionDelegation(DefaultDelegate):
     def __init__(self):
-        self._data: List = []
+        self._data: List[bytearray] = []
         self.__topic = None
         DefaultDelegate.__init__(self)
 
-    def handleNotification(self, handle: int, data: bytes):
+    def handleNotification(self, handle: int, data: bytearray):
         self._data.append(data)
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
         try:
@@ -46,7 +46,7 @@ class TionDelegation(DefaultDelegate):
         self.__topic = topic
 
     @property
-    def data(self) -> bytes:
+    def data(self) -> bytearray:
         return self._data.pop(0)
 
     @property
@@ -162,14 +162,6 @@ class tion(TionDummy):
           Byte array for sending to device
         """
         pass
-
-    @abc.abstractmethod
-    def _get_data_from_breezer(self) -> bytearray:
-        """ Get byte array with brezer response on state request
-        Returns:
-          breezer response
-        """
-        raise NotImplementedError()
 
     @abc.abstractmethod
     def _generate_model_specific_json(self) -> dict:
@@ -585,3 +577,40 @@ class tion(TionDummy):
         full response from breezer for test, as it was collected from packages: without deader and CRC
         """
         raise NotImplementedError()
+
+    def _get_data_from_breezer(self) -> bytearray:
+        """ Get byte array with breezer response on state request
+
+        :returns:
+          breezer response
+        """
+        self.have_breezer_state = False
+
+        _LOGGER.debug("Collecting data")
+
+        i = 0
+
+        while i < 10:
+            if self.mac == "dummy":
+                return self._dummy_data
+            else:
+                if self._delegation.haveNewData:
+                    byte_response = self._delegation.data
+                    if self._collect_message(byte_response):
+                        self.have_breezer_state = True
+                        break
+                    i = 0
+                else:
+                    self._btle.waitForNotifications(1.0)
+                i += 1
+        else:
+            _LOGGER.debug("Waiting too long for data")
+            self.notify.read()
+
+        if self.have_breezer_state:
+            result = self._data
+
+        else:
+            raise TionException("_get_data_from_breezer", "Could not get breezer state")
+
+        return result
