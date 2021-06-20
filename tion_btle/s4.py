@@ -99,7 +99,7 @@ class S4(LiteFamily):
         return full_message[15:-2]
 
     @property
-    def create_request_params_command(self) -> bytearray:
+    def command_getStatus(self) -> bytearray:
         return bytearray([LiteFamily.SINGLE_PACKET_ID, 0x10, 0x00, self.MAGIC_NUMBER, 0xa1] +
                          self.REQUEST_PARAMS +
                          self.random4 + self.random4 +

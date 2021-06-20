@@ -45,7 +45,7 @@ class S3(tion):
         return self.create_command(self.command_PAIR)
 
     @property
-    def get_status_command(self) -> bytearray:
+    def command_getStatus(self) -> bytearray:
         return self.create_command(self.command_REQUEST_PARAMS)
 
     def __try_get_state(self) -> bytearray:
@@ -65,7 +65,7 @@ class S3(tion):
 
     def _get_data_from_breezer(self) -> bytearray:
         have_data_from_breezer: bool = False
-        self._try_write(request=self.get_status_command)
+        self._try_write(request=self.command_getStatus)
 
         i = 0
         try:
