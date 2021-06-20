@@ -44,11 +44,6 @@ class S3(tion):
     def command_getStatus(self) -> bytearray:
         return self.create_command(self.command_REQUEST_PARAMS)
 
-    def __try_get_state(self) -> bytearray:
-        response = self._btle.getServiceByUUID(self.uuid).getCharacteristics()[0].read()
-        _LOGGER.debug("Response is %s", bytes(response).hex())
-        return response
-
     def _pair(self):
         _LOGGER.debug("Sending pair command")
         self._send_request(self.pair_command)

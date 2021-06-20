@@ -92,13 +92,6 @@ class LiteFamily(tion):
 
         return self._have_full_package
 
-    def __try_get_state(self) -> bytearray:
-        if self.mac == "dummy":
-            p = self._packages[self._package_id]
-            self._package_id += 1
-            return p
-        return self.notify.read()
-
     def _get_data_from_breezer(self) -> bytearray:
         self.have_breezer_state = False
 
