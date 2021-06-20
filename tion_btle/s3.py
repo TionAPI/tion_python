@@ -65,7 +65,7 @@ class S3(tion):
 
     def _get_data_from_breezer(self) -> bytearray:
         have_data_from_breezer: bool = False
-        self._do_action(self._try_write, request=self.get_status_command)
+        self._try_write(request=self.get_status_command)
 
         i = 0
         try:
@@ -132,4 +132,4 @@ class S3(tion):
         return new_settings
 
     def _send_request(self, request: bytearray):
-        self._do_action(self._try_write, request=request)
+        self._try_write(request)

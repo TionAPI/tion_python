@@ -10,6 +10,24 @@ from bluepy.btle import DefaultDelegate
 _LOGGER = logging.getLogger(__name__)
 
 
+def retry(retries: int = 3):
+    def decor(f: Callable):
+        def wrapper(*args, **kwargs):
+            for i in range(retries):
+                try:
+                    _LOGGER.debug("Trying %d/%d: %s(args=%s,kwargs=%s)", i, retries, f.__name__, args, kwargs)
+                    return f(*args, **kwargs)
+                except Exception as e:
+                    next_message = "Will try again" if i < retries else "Will not try again"
+                    _LOGGER.warning("Got exception: %s. %s", str(e), next_message)
+                    pass
+            else:
+                _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
+
+        return wrapper
+    return decor
+
+
 class TionDelegation(DefaultDelegate):
     def __init__(self):
         self._data: List = []
@@ -334,34 +352,10 @@ class tion(TionDummy):
 
             self._btle.disconnect()
 
+    @retry(retries=3)
     def _try_write(self, request: bytearray):
         _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.write.uuid)
         return self.write.write(request)
-
-    def _do_action(self, action: Callable, max_tries: int = 3, *args, **kwargs):
-        tries: int = 0
-        while tries < max_tries:
-            _LOGGER.debug("Doing " + action.__name__ + ". Attempt " + str(tries + 1) + "/" + str(max_tries))
-            try:
-                response = action(*args, **kwargs)
-                break
-            except Exception as e:
-                tries += 1
-                _LOGGER.warning("Got exception while " + action.__name__ + ": " + str(e))
-                pass
-        else:
-            if action.__name__ == '_connect':
-                message = "Could not connect to " + self.mac
-            elif action.__name__ == '__try_write':
-                message = "Could not write request + " + kwargs['request'].hex()
-            elif action.__name__ == '__try_get_state':
-                message = "Could not get updated state"
-            else:
-                message = "Could not do " + action.__name__
-
-            raise TionException(action.__name__, message)
-
-        return response
 
     def __write_to_notify_handle(self, data):
         need_response: bool = True if self.model == "Lite" else False

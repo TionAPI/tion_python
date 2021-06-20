@@ -105,7 +105,7 @@ class LiteFamily(tion):
 
     def _get_data_from_breezer(self) -> bytearray:
         self.have_breezer_state = False
-        self._do_action(self._try_write, request=self.create_request_params_command)
+        self._try_write(request=self.create_request_params_command)
         _LOGGER.debug("Collecting data")
 
         i = 0
@@ -160,8 +160,8 @@ class LiteFamily(tion):
         self.have_breezer_state = False
 
         for d in data_for_sent:
-            _LOGGER.debug("Doing _try_write with request=%s", bytes(d).hex())
-            self._do_action(self._try_write, request=d)
+            _LOGGER.debug("Doing write: request=%s", bytes(d).hex())
+            self._try_write(d)
 
     def _pair(self):
         """Lite family breezers is not require special pairing procedure"""
