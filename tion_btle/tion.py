@@ -120,6 +120,7 @@ class tion(TionDummy):
         self.__failed_connects: int = 0
         self.__connections_count: int = 0
         self.__notifications_enabled: bool = False
+        self.have_breezer_state: bool = False
 
         if self.mac == "dummy":
             _LOGGER.warning("Dummy mode detected!")
@@ -238,6 +239,7 @@ class tion(TionDummy):
         """
         try:
             self.connect()
+            self._try_write(request=self.command_getStatus)
             response = self._get_data_from_breezer()
         finally:
             if not keep_connection:
@@ -563,4 +565,23 @@ class tion(TionDummy):
     @property
     @abc.abstractmethod
     def command_getStatus(self) -> bytearray:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _collect_message(self, package: bytearray) -> bool:
+        """
+        Collects message from several package
+        Must set self._data
+
+        :param package: single package from breezer
+        :return: Have we full response from breezer or not
+        """
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def _dummy_data(self) -> bytearray:
+        """
+        full response from breezer for test, as it was collected from packages: without deader and CRC
+        """
         raise NotImplementedError()
