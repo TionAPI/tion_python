@@ -39,10 +39,6 @@ class LiteFamily(tion):
         self._light: bool = False
         self._have_heater: bool = False
 
-        # for tests
-        if self.mac == "dummy":
-            self._get_data_from_breezer = self._get_data_from_breezer_dummy
-
     @property
     def light(self) -> str:
         return self._decode_state(self._light)
@@ -105,18 +101,14 @@ class LiteFamily(tion):
 
     def _get_data_from_breezer(self) -> bytearray:
         self.have_breezer_state = False
-        self._try_write(request=self.command_getStatus)
+
         _LOGGER.debug("Collecting data")
 
         i = 0
+
         while i < 10:
             if self.mac == "dummy":
-                while not self._collect_message(self.__try_get_state()):
-                    pass
-                else:
-                    self._package_id = 0
-                    self.have_breezer_state = True
-                    break
+                return self._dummy_data
             else:
                 if self._delegation.haveNewData:
                     byte_response = self._delegation.data
@@ -134,7 +126,7 @@ class LiteFamily(tion):
         if self.have_breezer_state:
             result = self._data
         else:
-            raise TionException("Lite _get_data_from_breezer", "Could not get breezer state")
+            raise TionException("_get_data_from_breezer", "Could not get breezer state")
 
         return result
 
@@ -209,8 +201,3 @@ class LiteFamily(tion):
         """Packages for tests"""
         raise NotImplementedError()
 
-    @property
-    @abc.abstractmethod
-    def _dummy_data(self) -> bytearray:
-        """Data for tests"""
-        raise NotImplementedError()

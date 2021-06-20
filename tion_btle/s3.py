@@ -36,10 +36,6 @@ class S3(tion):
         self._productivity: int = 0
         self._fw_version: str = "unknown"
 
-        if self.mac == "dummy":
-            self._dummy_data = bytearray([0xb3, 0x10, 0x24, 0x14, 0x03, 0x00, 0x15, 0x14, 0x14, 0x8f, 0x00, 0x0c,
-                                          0x0a, 0x00, 0x4b, 0x0a, 0x00, 0x33, 0x00, 0x5a])
-
     @property
     def pair_command(self) -> bytearray:
         return self.create_command(self.command_PAIR)
@@ -63,31 +59,39 @@ class S3(tion):
         return bytearray([self.command_prefix, command, command_special, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           self.command_suffix])
 
+    def _collect_message(self, package: bytearray) -> bool:
+        self._data = package
+        return True
+
     def _get_data_from_breezer(self) -> bytearray:
-        have_data_from_breezer: bool = False
-        self._try_write(request=self.command_getStatus)
+        self.have_breezer_state = False
+
+        _LOGGER.debug("Collecting data")
 
         i = 0
-        try:
-            while i < 10:
+
+        while i < 10:
+            if self.mac == "dummy":
+                return self._dummy_data
+            else:
                 if self._delegation.haveNewData:
-                    have_data_from_breezer = True
-                    break
+                    byte_response = self._delegation.data
+                    if self._collect_message(byte_response):
+                        self.have_breezer_state = True
+                        break
+                    i = 0
                 else:
                     self._btle.waitForNotifications(1.0)
                 i += 1
-            else:
-                _LOGGER.debug("Waiting too long for data")
-                self.notify.read()
-        except btle.BTLEDisconnectError as e:
-            _LOGGER.debug("Got %s while waiting for notification", str(e))
+        else:
+            _LOGGER.debug("Waiting too long for data")
+            self.notify.read()
 
-        if have_data_from_breezer:
-            self._data = self._delegation.data
+        if self.have_breezer_state:
             result = self._data
 
         else:
-            raise TionException("s3 _get_data_from_breezer", "Could not get breezer state")
+            raise TionException("_get_data_from_breezer", "Could not get breezer state")
 
         return result
 
@@ -133,3 +137,8 @@ class S3(tion):
 
     def _send_request(self, request: bytearray):
         self._try_write(request)
+
+    @property
+    def _dummy_data(self) -> bytearray:
+        return bytearray([0xb3, 0x10, 0x24, 0x14, 0x03, 0x00, 0x15, 0x14, 0x14, 0x8f, 0x00, 0x0c, 0x0a, 0x00, 0x4b,
+                          0x0a, 0x00, 0x33, 0x00, 0x5a])
