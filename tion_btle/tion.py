@@ -341,9 +341,6 @@ class tion(TionDummy):
 
     def _disconnect(self):
         if self.connection_status != "disc":
-            if self.__notifications_enabled:
-                self._disable_notifications()
-
             self._btle.disconnect()
 
     @retry(retries=3)
