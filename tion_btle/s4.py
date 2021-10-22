@@ -65,7 +65,7 @@ class S4(LiteFamily):
             return self._encode_state(request["state"]) | \
                 (self._encode_state(request["sound"]) << 1) | \
                 (self._encode_state(request["light"]) << 2) | \
-                (self._encode_state(request["heater"]) << 3) | \
+                ((not self._encode_state(request["heater"])) << 3) | \
                 (True << 4)
         try:
             sign = 181
