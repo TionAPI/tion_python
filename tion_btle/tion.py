@@ -260,6 +260,20 @@ class tion(TionDummy):
 
         return {**common, **model_specific_data}
 
+    def _set_internal_state_from_request(self, request: dict) -> None:
+        """
+        Set internal parameters based on user request
+        :param request: changed breezer parameter from set request
+        :return: None
+        """
+        for p in ['fan_speed', 'target_temp', 'heater', 'sound', 'mode', 'state']:
+            # ToDo: lite have additional parameters to set: "light" and "co2_auto_control", so we should get this
+            #  list from class
+            try:
+                setattr(self, p, request[p])
+            except KeyError:
+                pass
+
     def set(self, new_settings=None) -> None:
         """
         Set new breezer state
@@ -278,14 +292,14 @@ class tion(TionDummy):
 
         try:
             self.connect()
-            current_settings = self.get()
+            current_settings = self.get(skip_update=True)
 
             merged_settings = {**current_settings, **new_settings}
 
             encoded_request = self._encode_request(merged_settings)
             _LOGGER.debug("Will write %s", encoded_request)
             self._send_request(encoded_request)
-            # ToDo set internal state according to new_settings
+            self._set_internal_state_from_request(new_settings)
         finally:
             self.disconnect()
 
@@ -486,6 +500,10 @@ class tion(TionDummy):
     @property
     def mode(self):
         return self._process_mode(self._mode)
+
+    @mode.setter
+    def mode(self, new_state: str):
+        self._mode = self._encode_mode(new_state)
 
     @property
     def model(self) -> str:
