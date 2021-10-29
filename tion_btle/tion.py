@@ -217,7 +217,7 @@ class tion(TionDummy):
         if heater == "off":
             self.heating = "off"
         else:
-            if in_temp < target_temp and out_temp - target_temp < 3:
+            if target_temp - in_temp > 3 and out_temp > in_temp:
                 self.heating = "on"
             else:
                 self.heating = "off"
