@@ -222,12 +222,11 @@ class tion(TionDummy):
             else:
                 self.heating = "off"
 
-    def get(self, keep_connection: bool = False) -> dict:
+    def get_state_from_breezer(self, keep_connection: bool = False) -> None:
         """
-        Get current device state
+        Get current state from breezer
         :param keep_connection: should we keep connection to device or disconnect after getting data
-        :return:
-          dictionary with device state
+        :return: None
         """
         try:
             self.connect()
@@ -242,6 +241,16 @@ class tion(TionDummy):
 
         self._decode_response(response)
         self.__detect_heating_state()
+
+    def get(self, keep_connection: bool = False) -> dict:
+        """
+        Report current breezer state
+        :param keep_connection: should we keep connection to device or disconnect after getting data
+        :return:
+          dictionary with device state
+        """
+
+        self.get_state_from_breezer(keep_connection)
         common = self.__generate_common_json()
         model_specific_data = self._generate_model_specific_json()
 
