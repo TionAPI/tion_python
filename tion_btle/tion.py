@@ -242,15 +242,19 @@ class tion(TionDummy):
         self._decode_response(response)
         self.__detect_heating_state()
 
-    def get(self, keep_connection: bool = False) -> dict:
+    def get(self, keep_connection: bool = False, skip_update: bool = False) -> dict:
         """
         Report current breezer state
+        :param skip_update: may we skip requesting data from breezer or not
         :param keep_connection: should we keep connection to device or disconnect after getting data
         :return:
           dictionary with device state
         """
-
-        self.get_state_from_breezer(keep_connection)
+        if skip_update and self.have_breezer_state:
+            _LOGGER.debug(f"Skipping getting state from breezer because skip_update={skip_update} and "
+                          f"have_breezer_state={self.have_breezer_state}")
+        else:
+            self.get_state_from_breezer(keep_connection)
         common = self.__generate_common_json()
         model_specific_data = self._generate_model_specific_json()
 
@@ -281,6 +285,7 @@ class tion(TionDummy):
             encoded_request = self._encode_request(merged_settings)
             _LOGGER.debug("Will write %s", encoded_request)
             self._send_request(encoded_request)
+            # ToDo set internal state according to new_settings
         finally:
             self.disconnect()
 
@@ -551,6 +556,7 @@ class tion(TionDummy):
             self.__connections_count = 0
 
         if self.__connections_count == 0:
+            self.have_breezer_state = False
             self._connect()
 
         self.__connections_count += 1
@@ -559,6 +565,7 @@ class tion(TionDummy):
         self.__connections_count -= 1
         if self.__connections_count <= 0:
             self._disconnect()
+            self.have_breezer_state = False
 
     @property
     @abc.abstractmethod
