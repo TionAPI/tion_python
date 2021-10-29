@@ -15,7 +15,7 @@ def read_state(tion: S4):
                  tion.sound,
                  tion.heater,
                  tion.fan_speed,
-                 tion.target_temp)
+                 tion.heater_temp)
 
 
 def pause(interval: int = 10):

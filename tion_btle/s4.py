@@ -37,7 +37,7 @@ class S4(LiteFamily):
         _LOGGER.debug("Data is %s", bytes(response).hex())
         try:
             self._mode = response[2]
-            self._target_temp = response[3]
+            self._heater_temp = response[3]
             self._fan_speed = response[4]
             self._in_temp = self.decode_temperature(response[5])
             self._out_temp = self.decode_temperature(response[6])

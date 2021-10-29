@@ -108,7 +108,7 @@ class tion(TionDummy):
         # states
         self._in_temp: int = 0
         self._out_temp: int = 0
-        self._target_temp: int = 0
+        self._heater_temp: int = 0
         self._fan_speed: int = 0
         self._mode: int = 0
         self._state: bool = False
@@ -184,7 +184,7 @@ class tion(TionDummy):
             "mode": self.mode,
             "out_temp": self.out_temp,
             "in_temp": self.in_temp,
-            "heater_temp": self.target_temp,
+            "heater_temp": self._heater_temp,
             "fan_speed": self.fan_speed,
             "filter_remain": self.filter_remain,
             "time": strftime("%H:%M", localtime()),
@@ -195,13 +195,13 @@ class tion(TionDummy):
     def __detect_heating_state(self,
                                in_temp: int = None,
                                out_temp: int = None,
-                               target_temp: int = None,
+                               heater_temp: int = None,
                                heater: str = None) -> None:
         """
         Tries to guess is heater working right now
         :param in_temp: air intake temperature
         :param out_temp: ait outtake temperature
-        :param target_temp: target temperature for heater
+        :param heater_temp: target temperature for heater
         :param heater: heater state
         :return: None
         """
@@ -209,15 +209,15 @@ class tion(TionDummy):
             in_temp = self.in_temp
         if out_temp is None:
             out_temp = self.out_temp
-        if target_temp is None:
-            target_temp = self.target_temp
+        if heater_temp is None:
+            heater_temp = self.heater_temp
         if heater is None:
             heater = self.heater
 
         if heater == "off":
             self.heating = "off"
         else:
-            if target_temp - in_temp > 3 and out_temp > in_temp:
+            if heater_temp - in_temp > 3 and out_temp > in_temp:
                 self.heating = "on"
             else:
                 self.heating = "off"
@@ -266,7 +266,7 @@ class tion(TionDummy):
         :param request: changed breezer parameter from set request
         :return: None
         """
-        for p in ['fan_speed', 'target_temp', 'heater', 'sound', 'mode', 'state']:
+        for p in ['fan_speed', 'heater_temp', 'heater', 'sound', 'mode', 'state']:
             # ToDo: lite have additional parameters to set: "light" and "co2_auto_control", so we should get this
             #  list from class
             try:
@@ -460,12 +460,20 @@ class tion(TionDummy):
         self._heater = self._encode_state(new_state)
 
     @property
+    def heater_temp(self) -> int:
+        return self._heater_temp
+
+    @heater_temp.setter
+    def heater_temp(self, new_temp: int):
+        self._heater_temp = new_temp
+
+    @property
     def target_temp(self) -> int:
-        return self._target_temp
+        return self.heater_temp
 
     @target_temp.setter
     def target_temp(self, new_temp: int):
-        self._target_temp = new_temp
+        self.heater_temp = new_temp
 
     @property
     def in_temp(self):

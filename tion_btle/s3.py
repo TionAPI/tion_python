@@ -97,7 +97,7 @@ class S3(tion):
             self._mode = int(list("{:02x}".format(response[2]))[0])
             self._heater = response[4] & 1
             self._state = response[4] >> 1 & 1
-            self._target_temp = response[3]
+            self._heater_temp = response[3]
             self._sound = response[4] >> 3 & 1
             self._out_temp = self.decode_temperature(response[7])
             self._in_temp = self.decode_temperature(response[8])
