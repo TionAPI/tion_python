@@ -23,13 +23,13 @@ print("header_commad_type = %s" % bytes(device._command_type).hex())
 
 _LOGGER.debug("Result is %s " % result)
 
-_LOGGER.info("Initial state: device is %s, light is %s, sound is %s, heater is %s, fan_speed is %d, target_temp is %d",
+_LOGGER.info("Initial state: device is %s, light is %s, sound is %s, heater is %s, fan_speed is %d, heater_temp is %d",
               device.state,
               device.light,
               device.sound,
               device.heater,
               device.fan_speed,
-              device.target_temp
+              device.heater_temp
               )
 
 

@@ -78,7 +78,7 @@ class Lite(LiteFamily):
             self._have_heater = response[0] >> 7 & 1
 
             self._mode = response[2]
-            self._target_temp = response[3]
+            self._heater_temp = response[3]
             self._fan_speed = response[4]
             self._in_temp = self.decode_temperature(response[5])
             self._out_temp = self.decode_temperature(response[6])
@@ -122,7 +122,7 @@ class Lite(LiteFamily):
             return result
 
         sb = 0x00  # ??
-        tb = 0x02 if (self.target_temp > 0 or self.fan_speed > 0) else 0x01
+        tb = 0x02 if (self.heater_temp > 0 or self.fan_speed > 0) else 0x01
         lb = [0x60, 0x00] if sb == 0 else [0x00, 0x00]
 
         return bytearray(

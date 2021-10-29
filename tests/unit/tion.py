@@ -25,11 +25,11 @@ class TionTests(unittest.TestCase):
             ["off", 15, 21, 20, "off"],
         ]
 
-        for expect, in_temp, out_temp, target_temp, heater in _variants:
+        for expect, in_temp, out_temp, heater_temp, heater in _variants:
             with self.subTest(expect=expect,
-                              in_temp=in_temp, out_temp=out_temp, target_temp=target_temp, heater=heater):
+                              in_temp=in_temp, out_temp=out_temp, heater_temp=heater_temp, heater=heater):
                 # call private __detect_heating_state from tion class
-                self._tion._tion__detect_heating_state(in_temp, out_temp, target_temp, heater)
+                self._tion._tion__detect_heating_state(in_temp, out_temp, heater_temp, heater)
                 self.assertEqual(self._tion.heating, expect)
 
 
