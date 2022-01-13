@@ -10,7 +10,7 @@ from bluepy.btle import DefaultDelegate
 _LOGGER = logging.getLogger(__name__)
 
 
-def retry(retries: int = 3):
+def retry(retries: int = 3, delay: int = 0):
     def decor(f: Callable):
         def wrapper(*args, **kwargs):
             for i in range(retries):
@@ -23,6 +23,8 @@ def retry(retries: int = 3):
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
                     pass
+                if delay > 0:
+                    time.sleep(delay)
             else:
                 _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
 
@@ -344,30 +346,25 @@ class tion(TionDummy):
 
         return connection_status
 
+    @retry(retries=1, delay=2)
+    def _try_connect(self) -> None:
+        """Tries to connect with retries"""
+
+        self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
+
     def _connect(self, need_notifications: bool = True):
         _LOGGER.debug("Connecting")
         if self.connection_status == "disc":
-            try:
-                self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
-                for tc in self._btle.getCharacteristics():
-                    if tc.uuid == self.uuid_notify:
-                        self.notify = tc
-                    if tc.uuid == self.uuid_write:
-                        self.write = tc
-                if need_notifications:
-                    self._enable_notifications()
-                else:
-                    _LOGGER.debug("Notifications was not requested")
-                self.__failed_connects = 0
-            except btle.BTLEDisconnectError as e:
-                _LOGGER.warning("Got BTLEDisconnectError:%s", str(e))
-                if self.__failed_connects < 1:
-                    self.__failed_connects += 1
-                    _LOGGER.debug("Will try again.")
-                    time.sleep(2)
-                    self._connect(need_notifications)
-                else:
-                    raise e
+            self._try_connect()
+            for tc in self._btle.getCharacteristics():
+                if tc.uuid == self.uuid_notify:
+                    self.notify = tc
+                if tc.uuid == self.uuid_write:
+                    self.write = tc
+            if need_notifications:
+                self._enable_notifications()
+            else:
+                _LOGGER.debug("Notifications was not requested")
 
     def _disconnect(self):
         if self.connection_status != "disc":
