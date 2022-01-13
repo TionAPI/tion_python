@@ -146,6 +146,10 @@ class TionTests(unittest.TestCase):
     def setUp(self):
         self.instances = [tion, LiteFamily, Lite, S3, S4]
 
+    def test_DecodeTemperature(self):
+        self.assertEqual(tion.decode_temperature(0x09), 9, "Should be 9")
+        self.assertEqual(tion.decode_temperature(0xFF), -1, "Should be -1")
+
     def test_mac(self):
         """mac property should be same as in init"""
         target = 'foo'
