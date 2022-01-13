@@ -10,6 +10,10 @@ from bluepy.btle import DefaultDelegate
 _LOGGER = logging.getLogger(__name__)
 
 
+class MaxTriesExceededError(Exception):
+    pass
+
+
 def retry(retries: int = 3, delay: int = 0):
     def decor(f: Callable):
         def wrapper(*args, **kwargs):
@@ -27,7 +31,7 @@ def retry(retries: int = 3, delay: int = 0):
                     time.sleep(delay)
             else:
                 _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
-
+                raise MaxTriesExceededError
         return wrapper
     return decor
 
