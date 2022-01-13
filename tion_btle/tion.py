@@ -19,9 +19,9 @@ def retry(retries: int = 3):
                     return f(*args, **kwargs)
                 except (btle.BTLEDisconnectError, btle.BTLEInternalError) as _e:
                     _LOGGER.info(f"Got BTLEDisconnectError: {_e}")
-                except Exception as e:
+                except Exception as _e:
                     next_message = "Will try again" if i < retries else "Will not try again"
-                    _LOGGER.warning("Got exception: %s. %s", str(e), next_message)
+                    _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
                     pass
             else:
                 _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
