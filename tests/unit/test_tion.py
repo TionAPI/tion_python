@@ -3,6 +3,11 @@ import unittest
 import unittest.mock as mock
 import bluepy
 
+from tion_btle.tion import tion
+from tion_btle.lite import LiteFamily
+from tion_btle.lite import Lite
+from tion_btle.s3 import S3
+from tion_btle.s4 import S4
 from tion_btle.tion import retry, MaxTriesExceededError
 
 
@@ -135,3 +140,16 @@ class retryTests(unittest.TestCase):
 
         with self.assertRaises(MaxTriesExceededError) as c:
             e()
+
+
+class TionTests(unittest.TestCase):
+    def setUp(self):
+        self.instances = [tion, LiteFamily, Lite, S3, S4]
+
+    def test_mac(self):
+        """mac property should be same as in init"""
+        target = 'foo'
+        for s in self.instances:
+            with self.subTest(test_instance=s):
+                t_tion = s(target)
+                self.assertEqual(t_tion.mac, target)
