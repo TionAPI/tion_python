@@ -17,6 +17,8 @@ def retry(retries: int = 3):
                 try:
                     _LOGGER.debug("Trying %d/%d: %s(args=%s,kwargs=%s)", i, retries, f.__name__, args, kwargs)
                     return f(*args, **kwargs)
+                except (btle.BTLEDisconnectError, btle.BTLEInternalError) as _e:
+                    _LOGGER.info(f"Got BTLEDisconnectError: {_e}")
                 except Exception as e:
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(e), next_message)
