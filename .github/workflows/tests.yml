@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.6, 3.7, 3.8, 3.9]        
+        python: [3.6, 3.7, 3.8, 3.9]
+        type: [unit, functional]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -35,8 +36,5 @@ jobs:
       - name: Install requirements
         run: pip install -r requirements.txt 
         
-      - name: Run unit tests
-        run: python -m unittest discover -s tests/unit -v
-
-      - name: Run functional tests
-        run: python -m unittest discover -s tests/functional -v
+      - name: Run ${{ matrix.type }} tests
+        run: python -m unittest discover -s tests/${{ matrix.type }} -v
