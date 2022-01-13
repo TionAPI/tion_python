@@ -14,10 +14,10 @@ class MaxTriesExceededError(Exception):
     pass
 
 
-def retry(retries: int = 3, delay: int = 0):
+def retry(retries: int = 2, delay: int = 0):
     def decor(f: Callable):
         def wrapper(*args, **kwargs):
-            for i in range(retries):
+            for i in range(retries+1):
                 try:
                     _LOGGER.debug("Trying %d/%d: %s(args=%s,kwargs=%s)", i, retries, f.__name__, args, kwargs)
                     return f(*args, **kwargs)
