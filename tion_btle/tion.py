@@ -17,20 +17,29 @@ class MaxTriesExceededError(Exception):
 def retry(retries: int = 2, delay: int = 0):
     def decor(f: Callable):
         def wrapper(*args, **kwargs):
+            last_info_exception = None
+            last_warning_exception = None
             for i in range(retries+1):
                 try:
                     _LOGGER.debug("Trying %d/%d: %s(args=%s,kwargs=%s)", i, retries, f.__name__, args, kwargs)
                     return f(*args, **kwargs)
                 except (btle.BTLEDisconnectError, btle.BTLEInternalError) as _e:
                     _LOGGER.info(f"Got BTLEDisconnectError: {_e}")
+                    last_info_exception = _e
                 except Exception as _e:
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
+                    last_warning_exception = _e
                     pass
                 if delay > 0:
                     time.sleep(delay)
             else:
                 _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
+                if _LOGGER.level > logging.INFO and last_info_exception is not None:
+                    _LOGGER.critical(f"Last exception was {last_info_exception}")
+                elif _LOGGER.level > logging.WARNING and last_warning_exception is not None:
+                    _LOGGER.critical(f"Last exception was {last_warning_exception}")
+
                 raise MaxTriesExceededError
         return wrapper
     return decor

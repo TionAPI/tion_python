@@ -3,6 +3,7 @@ import unittest
 import unittest.mock as mock
 import bluepy
 
+import tion_btle.tion
 from tion_btle.tion import tion
 from tion_btle.lite import LiteFamily
 from tion_btle.lite import Lite
@@ -14,11 +15,10 @@ from tion_btle.tion import retry, MaxTriesExceededError
 class retryTests(unittest.TestCase):
     def setUp(self):
         self.count = 0
-        self.patch = mock.patch('tion_btle.tion._LOGGER', return_value=None)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
+        tion_btle.tion._LOGGER.debug = mock.MagicMock(name='method')
+        tion_btle.tion._LOGGER.info = mock.MagicMock(name='method')
+        tion_btle.tion._LOGGER.warning = mock.MagicMock(name='method')
+        tion_btle.tion._LOGGER.critical = mock.MagicMock(name='method')
 
     def test_success_single_try(self):
         @retry(retries=0)
@@ -126,12 +126,12 @@ class retryTests(unittest.TestCase):
         def critical():
             raise Exception
 
-        with mock.patch('tion_btle.tion._LOGGER') as log_mock:
+        with mock.patch('tion_btle.tion._LOGGER.critical') as log_mock:
             try:
                 critical()
             except MaxTriesExceededError:
                 pass
-            log_mock.critical.assert_called()
+            log_mock.assert_called()
 
     def test_MaxTriesExceededError(self):
         @retry(retries=0)
