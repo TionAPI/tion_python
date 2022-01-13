@@ -121,7 +121,7 @@ class retryTests(unittest.TestCase):
             log_mock.critical.assert_not_called()
 
     def test_critical_log_level(self):
-        """Make sure that we have message at critical level if all goes bas"""
+        """Make sure that we have message at critical level if all goes bad"""
         @retry(retries=0)
         def critical():
             raise Exception
