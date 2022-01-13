@@ -21,7 +21,7 @@ class retryTests(unittest.TestCase):
         self.patch.stop()
 
     def test_success_single_try(self):
-        @retry(1)
+        @retry(retries=0)
         def a():
             self.count += 1
             return "expected_result"
@@ -29,7 +29,7 @@ class retryTests(unittest.TestCase):
         self.assertEqual(self.count, 1)
 
     def test_success_two_tries(self):
-        @retry(2)
+        @retry(retries=1)
         def a():
             self.count += 1
             return "expected_result"
@@ -37,7 +37,7 @@ class retryTests(unittest.TestCase):
         self.assertEqual(self.count, 1)
 
     def test_failure_two_tries(self):
-        @retry(2)
+        @retry(retries=1)
         def a():
             self.count += 1
             raise Exception()
@@ -48,7 +48,7 @@ class retryTests(unittest.TestCase):
             self.assertEqual(self.count, 2)
 
     def test_success_after_third_try(self):
-        @retry(5)
+        @retry(retries=5)
         def a():
             self.count += 1
             if self.count == 3:
@@ -75,7 +75,7 @@ class retryTests(unittest.TestCase):
         self.assertGreaterEqual(end-start, t_delay)
 
     def test_debug_log_level(self):
-        @retry(1)
+        @retry(retries=0)
         def debug():
             pass
 
@@ -88,7 +88,7 @@ class retryTests(unittest.TestCase):
 
     def test_info_log_level(self):
         """only debug and info messages if we have just BTLEDisconnectError and BTLEInternalError"""
-        @retry(2)
+        @retry(retries=1)
         def info(_e):
             if self.count == 0:
                 self.count += 1
@@ -107,7 +107,7 @@ class retryTests(unittest.TestCase):
 
     def test_warning_log_level(self):
         """Make sure that we have warnings for exception, but have no critical if all goes well finally"""
-        @retry(2)
+        @retry(retries=1)
         def warning():
             if self.count == 0:
                 self.count += 1
@@ -122,7 +122,7 @@ class retryTests(unittest.TestCase):
 
     def test_critical_log_level(self):
         """Make sure that we have message at critical level if all goes bas"""
-        @retry(1)
+        @retry(retries=0)
         def critical():
             raise Exception
 
@@ -134,7 +134,7 @@ class retryTests(unittest.TestCase):
             log_mock.critical.assert_called()
 
     def test_MaxTriesExceededError(self):
-        @retry(1)
+        @retry(retries=0)
         def e():
             raise Exception
 
