@@ -1,11 +1,12 @@
 import abc
+import asyncio
 import logging
 import time
 from typing import Callable, List
 from time import localtime, strftime
 
-from bluepy import btle
-from bluepy.btle import DefaultDelegate
+from bleak import BleakClient
+from bleak import exc
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,10 +24,7 @@ def retry(retries: int = 2, delay: int = 0):
                 try:
                     _LOGGER.debug("Trying %d/%d: %s(args=%s,kwargs=%s)", i, retries, f.__name__, args, kwargs)
                     return f(*args, **kwargs)
-                except (btle.BTLEDisconnectError, btle.BTLEInternalError) as _e:
-                    _LOGGER.info(f"Got BTLEDisconnectError: {_e}")
-                    last_info_exception = _e
-                except Exception as _e:
+                except exc.BleakError as _e:
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
                     last_warning_exception = _e
@@ -45,22 +43,13 @@ def retry(retries: int = 2, delay: int = 0):
     return decor
 
 
-class TionDelegation(DefaultDelegate):
+class TionDelegation:
     def __init__(self):
         self._data: List[bytearray] = []
-        self.__topic = None
-        DefaultDelegate.__init__(self)
 
     def handleNotification(self, handle: int, data: bytearray):
         self._data.append(data)
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
-        try:
-            self.__topic.read()
-        except btle.BTLEDisconnectError as e:
-            _LOGGER.warning("Got %s while read in handleNotification. May continue working.", str(e))
-
-    def setReadTopic(self, topic):
-        self.__topic = topic
 
     @property
     def data(self) -> bytearray:
@@ -77,38 +66,7 @@ class TionException(Exception):
         self.message = message
 
 
-class TionDummy:
-    """
-    Class for dummy methods, that should be used for tests
-    """
-
-    _dummy_data: bytearray
-
-    @staticmethod
-    def _connect_dummy(need_notifications: bool = True):
-        """dummy connection"""
-
-        _LOGGER.info("Dummy connect")
-        return
-
-    @staticmethod
-    def _disconnect_dummy():
-        return
-
-    def _get_data_from_breezer_dummy(self) -> bytearray:
-        return self._dummy_data
-
-    @staticmethod
-    def _try_write_dummy(request: bytearray):
-        _LOGGER.debug("Dummy write %s", bytes(request).hex())
-        return
-
-    @staticmethod
-    def _enable_notifications_dummy():
-        return
-
-
-class tion(TionDummy):
+class tion:
     statuses = ['off', 'on']
     modes = ['recirculation', 'mixed']  # 'recirculation', 'mixed' and 'outside', as Index exception
     uuid_notify: str = ""
@@ -116,7 +74,7 @@ class tion(TionDummy):
 
     def __init__(self, mac: str):
         self._mac = mac
-        self._btle: btle.Peripheral = btle.Peripheral(None)
+        self._btle: BleakClient = BleakClient(self.mac)
         self._delegation = TionDelegation()
         self._fan_speed = 0
         self._model: str = self.__class__.__name__
@@ -138,16 +96,8 @@ class tion(TionDummy):
         self.__notifications_enabled: bool = False
         self.have_breezer_state: bool = False
 
-        if self.mac == "dummy":
-            _LOGGER.warning("Dummy mode detected!")
-            self._connect = self._connect_dummy
-            self._disconnect = self._disconnect_dummy
-            self._try_write = self._try_write_dummy
-            self._enable_notifications = self._enable_notifications_dummy
-            self._get_data_from_breezer = self._get_data_from_breezer_dummy
-
     @abc.abstractmethod
-    def _send_request(self, request: bytearray):
+    async def _send_request(self, request: bytearray):
         """ Send request to device
 
         Args:
@@ -219,26 +169,26 @@ class tion(TionDummy):
 
         return "off"
 
-    def get_state_from_breezer(self, keep_connection: bool = False) -> None:
+    async def get_state_from_breezer(self, keep_connection: bool = False) -> None:
         """
         Get current state from breezer
         :param keep_connection: should we keep connection to device or disconnect after getting data
         :return: None
         """
         try:
-            self.connect()
-            self._try_write(request=self.command_getStatus)
-            response = self._get_data_from_breezer()
+            await self.connect()
+            await self._try_write(request=self.command_getStatus)
+            response = await self._get_data_from_breezer()
         finally:
             if not keep_connection:
-                self.disconnect()
+                await self.disconnect()
             else:
                 _LOGGER.warning("You are using keep_connection parameter of get method. It will be removed in v2.0.0")
                 self.__connections_count -= 1
 
         self._decode_response(response)
 
-    def get(self, keep_connection: bool = False, skip_update: bool = False) -> dict:
+    async def get(self, keep_connection: bool = False, skip_update: bool = False) -> dict:
         """
         Report current breezer state
         :param skip_update: may we skip requesting data from breezer or not
@@ -250,7 +200,7 @@ class tion(TionDummy):
             _LOGGER.debug(f"Skipping getting state from breezer because skip_update={skip_update} and "
                           f"have_breezer_state={self.have_breezer_state}")
         else:
-            self.get_state_from_breezer(keep_connection)
+            await self.get_state_from_breezer(keep_connection)
         common = self.__generate_common_json()
         model_specific_data = self._generate_model_specific_json()
 
@@ -270,7 +220,7 @@ class tion(TionDummy):
             except KeyError:
                 pass
 
-    def set(self, new_settings=None) -> None:
+    async def set(self, new_settings=None) -> None:
         """
         Set new breezer state
         :param new_settings: json with new state
@@ -287,17 +237,17 @@ class tion(TionDummy):
             pass
 
         try:
-            self.connect()
-            current_settings = self.get(skip_update=True)
+            await self.connect()
+            current_settings = await self.get(skip_update=True)
 
             merged_settings = {**current_settings, **new_settings}
 
             encoded_request = self._encode_request(merged_settings)
             _LOGGER.debug("Will write %s", encoded_request)
-            self._send_request(encoded_request)
+            await self._send_request(encoded_request)
             self._set_internal_state_from_request(new_settings)
         finally:
-            self.disconnect()
+            await self.disconnect()
 
     @property
     def mac(self):
@@ -323,86 +273,53 @@ class tion(TionDummy):
 
     @property
     def connection_status(self):
-        connection_status = "disc"
-        try:
-            connection_status = self._btle.getState()
-        except btle.BTLEInternalError as e:
-            if str(e) == "Helper not started (did you call connect()?)":
-                pass
-            else:
-                raise e
-        except btle.BTLEDisconnectError as e:
-            pass
-        except BrokenPipeError as e:
-            self._btle = btle.Peripheral(None)
-
-        return connection_status
+        status = "connected" if self._btle.is_connected else "disc"
+        _LOGGER.debug("connection_status is %s" % status)
+        return status
 
     @retry(retries=1, delay=2)
-    def _try_connect(self) -> None:
+    async def _try_connect(self) -> bool:
         """Tries to connect with retries"""
 
-        self._btle.connect(self.mac, btle.ADDR_TYPE_RANDOM)
+        return await self._btle.connect()
 
-    def _connect(self, need_notifications: bool = True):
+    async def _connect(self, need_notifications: bool = True):
         _LOGGER.debug("Connecting")
         if self.connection_status == "disc":
-            self._try_connect()
-            for tc in self._btle.getCharacteristics():
-                if tc.uuid == self.uuid_notify:
-                    self.notify = tc
-                if tc.uuid == self.uuid_write:
-                    self.write = tc
+            try:
+                await self._try_connect()
+            except exc.BleakError as e:
+                _LOGGER.warning(f"Got {str(e)=} exception in _connect")
+                raise e
+
             if need_notifications:
-                self._enable_notifications()
+                await self._enable_notifications()
             else:
                 _LOGGER.debug("Notifications was not requested")
 
-    def _disconnect(self):
+    async def _disconnect(self):
         if self.connection_status != "disc":
-            self._btle.disconnect()
+            await self._btle.disconnect()
 
     @retry(retries=3)
-    def _try_write(self, request: bytearray):
-        _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.write.uuid)
-        return self.write.write(request)
+    async def _try_write(self, request: bytearray):
+        _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.uuid_write)
+        return await self._btle.write_gatt_char(
+            self.uuid_write,
+            request,
+            False
+        )
 
-    def __write_to_notify_handle(self, data):
-        need_response: bool = True if self.model == "Lite" else False
-        _LOGGER.debug("Notify handler is %s", self.notify.getHandle())
-        notify_handle = self.notify.getHandle() + 1
-
-        _LOGGER.debug("Will write %s to %s handle with withResponse=%s", data, notify_handle, need_response)
-        result = self._btle.writeCharacteristic(notify_handle, data, withResponse=need_response)
-        _LOGGER.debug("Result is %s", result)
-
-    def _enable_notifications(self):
+    async def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
-        setup_data = b"\x01\x00"
-
-        self.__write_to_notify_handle(setup_data)
-
-        self._btle.withDelegate(self._delegation)
-        _LOGGER.debug("Delegation enabled")
         try:
-            data = self.notify.read()
-            _LOGGER.debug("First read done. Data is %s", bytes(data).hex())
-        except btle.BTLEDisconnectError as e:
-            _LOGGER.critical("_enable_notifications: got '%s' while first read! Could not continue!", str(e))
+            await self._btle.start_notify(self.uuid_notify, self._delegation.handleNotification)
+        except exc.BleakError as e:
+            _LOGGER.warning("Got exception %s while enabling notifications!" % str(e))
             raise e
 
-        self._delegation.setReadTopic(self.notify)
-        _LOGGER.debug("enable_notification is done")
         self.__notifications_enabled = True
-
-    def _disable_notifications(self):
-        _LOGGER.debug("Disabling notifications")
-        setup_data = b"\x00\x00"
-
-        self.__write_to_notify_handle(setup_data)
-
-        _LOGGER.debug("disable_notification is done")
-        self.__notifications_enabled = False
+        return
 
     @property
     def fan_speed(self):
@@ -516,64 +433,41 @@ class tion(TionDummy):
         """
         return self.modes.index(mode) if mode in self.modes else 2
 
-    def pair(self):
+    async def pair(self):
         _LOGGER.debug("Pairing")
-        self._connect(need_notifications=False)
+        await self._connect(need_notifications=False)
         _LOGGER.debug("Connected. BT pairing ...")
         try:
-            # use private methods to avoid disconnect if already paired
-            self._btle._writeCmd('pair' + '\n')
-            rsp = self._btle._waitResp('mgmt')
-            _LOGGER.debug("Got response while sending pair command: %s", rsp)
-            try:
-                estat = rsp['estat'][0]
-            except KeyError:
-                # we may have no estat in response. It is OK.
-                estat = 0
-
-            if estat == 20:
-                # it seem in https://github.com/TionAPI/tion_python/issues/17 that we may ignore it.
-                _LOGGER.warning("bt pairing: could not pair! Permission denied. Check permissions at host. "
-                                "Ignore it if all goes well")
-            elif estat == 0 or estat == 19 or rsp['code'][0] == 'success':
-                # 0 -- fine, no errors; 19 -- paired.
-                try:
-                    msg = rsp['emsg'][0]
-                except KeyError:
-                    msg = rsp['code'][0]
-                _LOGGER.debug(msg)
-            else:
-                _LOGGER.critical("Unexpected response: %s", rsp)
-                raise TionException('pair', rsp)
+            await self._btle.pair()
             # device-specific pairing
             _LOGGER.debug("Device-specific pairing ...")
-            self._pair()
+            await self._pair()
             _LOGGER.debug("Device pair is done")
         except Exception as e:
             _LOGGER.critical(f"Got exception while pair {type(e).__name__}: {str(e)}")
             raise TionException('pair', f"{type(e).__name__}: {str(e)}")
         finally:
             _LOGGER.debug("disconnected")
-            self._disconnect()
+            await self._disconnect()
 
     @abc.abstractmethod
-    def _pair(self):
+    async def _pair(self):
         """Perform model-specific pair steps"""
 
-    def connect(self):
+    async def connect(self):
         if self.__connections_count < 0:
             self.__connections_count = 0
 
         if self.__connections_count == 0:
             self.have_breezer_state = False
-            self._connect()
+            await self._connect()
 
         self.__connections_count += 1
 
-    def disconnect(self):
+    async def disconnect(self):
         self.__connections_count -= 1
         if self.__connections_count <= 0:
-            self._disconnect()
+            await self._disconnect()
             self.have_breezer_state = False
 
     @property
@@ -600,7 +494,7 @@ class tion(TionDummy):
         """
         raise NotImplementedError()
 
-    def _get_data_from_breezer(self) -> bytearray:
+    async def _get_data_from_breezer(self) -> bytearray:
         """ Get byte array with breezer response on state request
 
         :returns:
@@ -613,21 +507,17 @@ class tion(TionDummy):
         i = 0
 
         while i < 10:
-            if self.mac == "dummy":
-                return self._dummy_data
+            if self._delegation.haveNewData:
+                byte_response = self._delegation.data
+                if self._collect_message(byte_response):
+                    self.have_breezer_state = True
+                    break
+                i = 0
             else:
-                if self._delegation.haveNewData:
-                    byte_response = self._delegation.data
-                    if self._collect_message(byte_response):
-                        self.have_breezer_state = True
-                        break
-                    i = 0
-                else:
-                    self._btle.waitForNotifications(1.0)
-                i += 1
+                await asyncio.sleep(1)
+            i += 1
         else:
             _LOGGER.debug("Waiting too long for data")
-            self.notify.read()
 
         if self.have_breezer_state:
             result = self._data

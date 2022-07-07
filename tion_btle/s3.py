@@ -5,8 +5,6 @@ if __package__ == "":
 else:
     from .tion import tion, TionException
 
-from bluepy import btle
-
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,9 +42,9 @@ class S3(tion):
     def command_getStatus(self) -> bytearray:
         return self.create_command(self.command_REQUEST_PARAMS)
 
-    def _pair(self):
+    async def _pair(self):
         _LOGGER.debug("Sending pair command")
-        self._send_request(self.pair_command)
+        await self._send_request(self.pair_command)
         _LOGGER.debug("Done!")
 
     def create_command(self, command: int) -> bytearray:
@@ -57,38 +55,6 @@ class S3(tion):
     def _collect_message(self, package: bytearray) -> bool:
         self._data = package
         return True
-
-    def _get_data_from_breezer(self) -> bytearray:
-        self.have_breezer_state = False
-
-        _LOGGER.debug("Collecting data")
-
-        i = 0
-
-        while i < 10:
-            if self.mac == "dummy":
-                return self._dummy_data
-            else:
-                if self._delegation.haveNewData:
-                    byte_response = self._delegation.data
-                    if self._collect_message(byte_response):
-                        self.have_breezer_state = True
-                        break
-                    i = 0
-                else:
-                    self._btle.waitForNotifications(1.0)
-                i += 1
-        else:
-            _LOGGER.debug("Waiting too long for data")
-            self.notify.read()
-
-        if self.have_breezer_state:
-            result = self._data
-
-        else:
-            raise TionException("_get_data_from_breezer", "Could not get breezer state")
-
-        return result
 
     def _decode_response(self, response: bytearray):
         _LOGGER.debug("Data is %s", bytes(response).hex())
@@ -130,5 +96,5 @@ class S3(tion):
                     self._encode_status(request["sound"]) << 3)
         return new_settings
 
-    def _send_request(self, request: bytearray):
-        self._try_write(request)
+    async def _send_request(self, request: bytearray):
+        await self._try_write(request)

@@ -3,9 +3,9 @@ import logging
 from random import randrange
 
 if __package__ == "":
-    from tion_btle.tion import tion, TionException
+    from tion_btle.tion import tion
 else:
-    from .tion import tion, TionException
+    from .tion import tion
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class LiteFamily(tion):
 
         return self._have_full_package
 
-    def _send_request(self, request: bytearray):
+    async def _send_request(self, request: bytearray):
         def chunks(lst, n):
             """Yield successive n-sized chunks from lst."""
             for j in range(0, len(lst), n):
@@ -115,9 +115,9 @@ class LiteFamily(tion):
 
         for d in data_for_sent:
             _LOGGER.debug("Doing write: request=%s", bytes(d).hex())
-            self._try_write(d)
+            await self._try_write(d)
 
-    def _pair(self):
+    async def _pair(self):
         """Lite family breezers is not require special pairing procedure"""
         return
 
