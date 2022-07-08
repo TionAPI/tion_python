@@ -2,7 +2,7 @@ import abc
 import asyncio
 import logging
 import time
-from typing import Callable, List
+from typing import Callable, List, final
 from time import localtime, strftime
 
 from bleak import BleakClient
@@ -158,6 +158,7 @@ class Tion:
             "model": self.model,
         }
 
+    @final
     @property
     def heating(self) -> str:
         """Tries to guess is heater working right now."""
@@ -169,6 +170,7 @@ class Tion:
 
         return "off"
 
+    @final
     async def get_state_from_breezer(self, keep_connection: bool = False) -> None:
         """
         Get current state from breezer
@@ -188,6 +190,7 @@ class Tion:
 
         self._decode_response(response)
 
+    @final
     async def get(self, keep_connection: bool = False, skip_update: bool = False) -> dict:
         """
         Report current breezer state
@@ -206,6 +209,7 @@ class Tion:
 
         return {**common, **model_specific_data}
 
+    @final
     def _set_internal_state_from_request(self, request: dict) -> None:
         """
         Set internal parameters based on user request
@@ -220,6 +224,7 @@ class Tion:
             except KeyError:
                 pass
 
+    @final
     async def set(self, new_settings=None) -> None:
         """
         Set new breezer state
@@ -249,6 +254,7 @@ class Tion:
         finally:
             await self.disconnect()
 
+    @final
     @property
     def mac(self):
         return self._mac
@@ -264,6 +270,7 @@ class Tion:
         barrier = 0b10000000
         return raw if raw < barrier else -(~(raw - barrier) + barrier + 1)
 
+    @final
     def _process_status(self, code: int) -> str:
         try:
             status = self.statuses[code]
@@ -271,18 +278,21 @@ class Tion:
             status = 'unknown'
         return status
 
+    @final
     @property
     def connection_status(self):
         status = "connected" if self._btle.is_connected else "disc"
         _LOGGER.debug("connection_status is %s" % status)
         return status
 
+    @final
     @retry(retries=1, delay=2)
     async def _try_connect(self) -> bool:
         """Tries to connect with retries"""
 
         return await self._btle.connect()
 
+    @final
     async def _connect(self, need_notifications: bool = True):
         _LOGGER.debug("Connecting")
         if self.connection_status == "disc":
@@ -297,10 +307,12 @@ class Tion:
             else:
                 _LOGGER.debug("Notifications was not requested")
 
+    @final
     async def _disconnect(self):
         if self.connection_status != "disc":
             await self._btle.disconnect()
 
+    @final
     @retry(retries=3)
     async def _try_write(self, request: bytearray):
         _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.uuid_write)
@@ -310,6 +322,7 @@ class Tion:
             False
         )
 
+    @final
     async def _enable_notifications(self):
         _LOGGER.debug("Enabling notification")
         try:
@@ -321,6 +334,7 @@ class Tion:
         self.__notifications_enabled = True
         return
 
+    @final
     @property
     def fan_speed(self):
         return self._fan_speed
@@ -336,6 +350,7 @@ class Tion:
 
         # self.set({"fan_speed": new_speed})
 
+    @final
     def _process_mode(self, mode_code: int) -> str:
         try:
             mode = self.modes[mode_code]
@@ -351,72 +366,89 @@ class Tion:
     def _encode_state(state: str) -> bool:
         return state == "on"
 
+    @final
     @property
     def state(self) -> str:
         return self._decode_state(self._state)
 
+    @final
     @state.setter
     def state(self, new_state: str):
         self._state = self._encode_state(new_state)
 
+    @final
     @property
     def heater(self) -> str:
         return self._decode_state(self._heater)
 
+    @final
     @heater.setter
     def heater(self, new_state: str):
         self._heater = self._encode_state(new_state)
 
+    @final
     @property
     def heater_temp(self) -> int:
         return self._heater_temp
 
+    @final
     @heater_temp.setter
     def heater_temp(self, new_temp: int):
         self._heater_temp = new_temp
 
+    @final
     @property
     def target_temp(self) -> int:
         return self.heater_temp
 
+    @final
     @target_temp.setter
     def target_temp(self, new_temp: int):
         self.heater_temp = new_temp
 
+    @final
     @property
     def in_temp(self):
         """Income air temperature"""
         return self._in_temp
 
+    @final
     @property
     def out_temp(self):
         """Outcome air temperature"""
         return self._out_temp
 
+    @final
     @property
     def sound(self) -> str:
         return self._decode_state(self._sound)
 
+    @final
     @sound.setter
     def sound(self, new_state: str):
         self._sound = self._encode_state(new_state)
 
+    @final
     @property
     def filter_remain(self) -> float:
         return self._filter_remain
 
+    @final
     @property
     def mode(self):
         return self._process_mode(self._mode)
 
+    @final
     @mode.setter
     def mode(self, new_state: str):
         self._mode = self._encode_mode(new_state)
 
+    @final
     @property
     def model(self) -> str:
         return self._model.removeprefix("Tion")
 
+    @final
     def _encode_status(self, status: str) -> int:
         """
         Encode string status () to int
@@ -425,6 +457,7 @@ class Tion:
         """
         return self.statuses.index(status) if status in self.statuses else 0
 
+    @final
     def _encode_mode(self, mode: str) -> int:
         """
         Encode string mode to integer
@@ -433,6 +466,7 @@ class Tion:
         """
         return self.modes.index(mode) if mode in self.modes else 2
 
+    @final
     async def pair(self):
         _LOGGER.debug("Pairing")
         await self._connect(need_notifications=False)
@@ -454,6 +488,7 @@ class Tion:
     async def _pair(self):
         """Perform model-specific pair steps"""
 
+    @final
     async def connect(self):
         if self.__connections_count < 0:
             self.__connections_count = 0
@@ -464,6 +499,7 @@ class Tion:
 
         self.__connections_count += 1
 
+    @final
     async def disconnect(self):
         self.__connections_count -= 1
         if self.__connections_count <= 0:
@@ -486,6 +522,7 @@ class Tion:
         """
         raise NotImplementedError()
 
+    @final
     async def _get_data_from_breezer(self) -> bytearray:
         """ Get byte array with breezer response on state request
 

@@ -1,6 +1,7 @@
 import abc
 import logging
 from random import randrange
+from typing import final
 
 if __package__ == "":
     from tion_btle.tion import Tion
@@ -39,24 +40,29 @@ class TionLiteFamily(Tion):
         self._light: bool = False
         self._have_heater: bool = False
 
+    @final
     @property
     def light(self) -> str:
         return self._decode_state(self._light)
 
+    @final
     @light.setter
     def light(self, new_state: str):
         self._light = self._encode_state(new_state)
 
+    @final
     @property
     def random(self) -> bytes:
         # return random hex number.
         return randrange(0xFF)
 
+    @final
     @property
     def random4(self) -> list:
         # return 4 random hex.
         return [self.random, self.random, self.random, self.random]
 
+    @final
     def _collect_message(self, package: bytearray) -> bool:
         self._have_full_package = False
 
@@ -92,6 +98,7 @@ class TionLiteFamily(Tion):
 
         return self._have_full_package
 
+    @final
     async def _send_request(self, request: bytearray):
         def chunks(lst, n):
             """Yield successive n-sized chunks from lst."""
@@ -121,6 +128,7 @@ class TionLiteFamily(Tion):
         """Lite family breezers is not require special pairing procedure"""
         return
 
+    @final
     @property
     def CRC(self) -> list:
         return [0xbb, 0xaa]
