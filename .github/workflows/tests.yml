@@ -28,6 +28,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Install bluez
+        run: apt-get install bluez
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
