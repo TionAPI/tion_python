@@ -1,4 +1,5 @@
 import time
+import pytest
 import unittest
 import unittest.mock as mock
 import bluepy
@@ -142,18 +143,22 @@ class retryTests(unittest.TestCase):
             e()
 
 
-class TionTests(unittest.TestCase):
-    def setUp(self):
-        self.instances = [tion, LiteFamily, Lite, S3, S4]
+@pytest.mark.parametrize(
+    "raw_temperature, result",
+    [
+        [0x09, 9],
+        [0xFF, -1]
+    ]
+)
+def test_decode_temperature(raw_temperature, result):
+    assert tion.decode_temperature(raw_temperature) == result
 
-    def test_DecodeTemperature(self):
-        self.assertEqual(tion.decode_temperature(0x09), 9, "Should be 9")
-        self.assertEqual(tion.decode_temperature(0xFF), -1, "Should be -1")
 
-    def test_mac(self):
-        """mac property should be same as in init"""
-        target = 'foo'
-        for s in self.instances:
-            with self.subTest(test_instance=s):
-                t_tion = s(target)
-                self.assertEqual(t_tion.mac, target)
+@pytest.mark.parametrize(
+    "instance",
+    [tion, LiteFamily, Lite, S3, S4]
+)
+def test_mac(instance):
+    target = 'foo'
+    t_tion = instance(target)
+    assert t_tion.mac == target
