@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         python: ['3.9', '3.10']
-        type: [unit, functional]
+        type: [unit]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
