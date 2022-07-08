@@ -37,4 +37,4 @@ jobs:
         run: pip install -r requirements_test.txt
         
       - name: Run ${{ matrix.type }} tests
-        run: python -m unittest discover -s tests/${{ matrix.type }} -v
+        run: pytest tests/${{ matrix.type }}
