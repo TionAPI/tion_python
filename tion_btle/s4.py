@@ -2,16 +2,16 @@ import logging
 
 if __package__ == "":
     from tion_btle.tion import TionException
-    from tion_btle.light_family import LiteFamily
+    from tion_btle.light_family import TionLiteFamily
 else:
     from .tion import TionException
-    from .light_family import LiteFamily
+    from .light_family import TionLiteFamily
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
-class S4(LiteFamily):
+class TionS4(TionLiteFamily):
     def __init__(self, mac: str):
         super().__init__(mac)
 
@@ -92,7 +92,7 @@ class S4(LiteFamily):
 
     @property
     def command_getStatus(self) -> bytearray:
-        return bytearray([LiteFamily.SINGLE_PACKET_ID, 0x10, 0x00, self.MAGIC_NUMBER, 0xa1] +
+        return bytearray([TionLiteFamily.SINGLE_PACKET_ID, 0x10, 0x00, self.MAGIC_NUMBER, 0xa1] +
                          self.REQUEST_PARAMS +
                          self.random4 + self.random4 +
                          self.CRC

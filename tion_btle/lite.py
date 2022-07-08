@@ -2,16 +2,16 @@ import logging
 
 if __package__ == "":
     from tion_btle.tion import TionException
-    from tion_btle.light_family import LiteFamily
+    from tion_btle.light_family import TionLiteFamily
 else:
     from .tion import TionException
-    from .light_family import LiteFamily
+    from .light_family import TionLiteFamily
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
-class Lite(LiteFamily):
+class TionLite(TionLiteFamily):
 
     def __init__(self, mac: str):
         super().__init__(mac)
@@ -42,7 +42,7 @@ class Lite(LiteFamily):
     
     @property
     def REQUEST_DEVICE_INFO(self) -> list:
-        return [0x09, LiteFamily.MIDDLE_PACKET_ID]
+        return [0x09, TionLiteFamily.MIDDLE_PACKET_ID]
 
     def _decode_header(self, header: bytearray):
         _LOGGER.debug("Header is %s", bytes(header).hex())

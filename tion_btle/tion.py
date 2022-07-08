@@ -415,7 +415,7 @@ class Tion:
 
     @property
     def model(self) -> str:
-        return self._model
+        return self._model.removeprefix("Tion")
 
     def _encode_status(self, status: str) -> int:
         """
