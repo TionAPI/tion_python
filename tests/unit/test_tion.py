@@ -1,8 +1,8 @@
+import bluepy
 import time
 import pytest
-import unittest
 import unittest.mock as mock
-from bleak import exc
+
 
 import tion_btle.tion
 from tion_btle.tion import tion
@@ -34,7 +34,7 @@ def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int):
                 if self.count - 1 == _succeed_run:
                     return "expected_result"
 
-            raise exc.BleakError
+            raise bluepy.btle.BTLEDisconnectError
 
     i = TestRetry()
     start = time.time()
