@@ -1,7 +1,7 @@
 import abc
 import logging
 from random import randrange
-from typing import final
+from typing import final, List
 
 if __package__ == "":
     from tion_btle.tion import Tion
@@ -99,7 +99,7 @@ class TionLiteFamily(Tion):
         return self._have_full_package
 
     @final
-    async def _send_request(self, request: bytearray):
+    def split_command(self, request: bytearray) -> List[bytearray]:
         def chunks(lst, n):
             """Yield successive n-sized chunks from lst."""
             for j in range(0, len(lst), n):
@@ -107,20 +107,24 @@ class TionLiteFamily(Tion):
 
         if len(request) < 20:
             request[0] = self.SINGLE_PACKET_ID
-            data_for_sent = [request]
+            result = [request]
         else:
             request[0] = self.FIRST_PACKET_ID
-            data_for_sent = list(chunks(request, 20))
+            result = list(chunks(request, 20))
 
-            for i in range(1, len(data_for_sent)):
-                if i == len(data_for_sent)-1:
-                    data_for_sent[i].insert(0, self.END_PACKET_ID)
+            for i in range(1, len(result)):
+                if i == len(result)-1:
+                    result[i].insert(0, self.END_PACKET_ID)
                 else:
-                    data_for_sent[i].insert(0, self.MIDDLE_PACKET_ID)
+                    result[i].insert(0, self.MIDDLE_PACKET_ID)
 
+        return result
+
+    @final
+    async def _send_request(self, request: bytearray):
         self.have_breezer_state = False
 
-        for d in data_for_sent:
+        for d in self.split_command(request):
             _LOGGER.debug("Doing write: request=%s", bytes(d).hex())
             await self._try_write(d)
 
