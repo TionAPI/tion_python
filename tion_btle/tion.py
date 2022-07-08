@@ -66,7 +66,7 @@ class TionException(Exception):
         self.message = message
 
 
-class tion:
+class Tion:
     statuses = ['off', 'on']
     modes = ['recirculation', 'mixed']  # 'recirculation', 'mixed' and 'outside', as Index exception
     uuid_notify: str = ""

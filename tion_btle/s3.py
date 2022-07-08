@@ -1,15 +1,15 @@
 import logging
 
 if __package__ == "":
-    from tion_btle.tion import tion, TionException
+    from tion_btle.tion import Tion, TionException
 else:
-    from .tion import tion, TionException
+    from .tion import Tion, TionException
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
-class S3(tion):
+class S3(Tion):
     uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
     uuid_write = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
     uuid_notify = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"

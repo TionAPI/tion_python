@@ -3,15 +3,15 @@ import logging
 from random import randrange
 
 if __package__ == "":
-    from tion_btle.tion import tion
+    from tion_btle.tion import Tion
 else:
-    from .tion import tion
+    from .tion import Tion
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
-class LiteFamily(tion):
+class LiteFamily(Tion):
     uuid: str = "98f00001-3788-83ea-453e-f52244709ddb"
     uuid_write: str = "98f00002-3788-83ea-453e-f52244709ddb"
     uuid_notify: str = "98f00003-3788-83ea-453e-f52244709ddb"
