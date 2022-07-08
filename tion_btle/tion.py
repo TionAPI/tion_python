@@ -171,10 +171,9 @@ class Tion:
         return "off"
 
     @final
-    async def get_state_from_breezer(self, keep_connection: bool = False) -> None:
+    async def get_state_from_breezer(self) -> None:
         """
         Get current state from breezer
-        :param keep_connection: should we keep connection to device or disconnect after getting data
         :return: None
         """
         try:
@@ -182,20 +181,15 @@ class Tion:
             await self._try_write(request=self.command_getStatus)
             response = await self._get_data_from_breezer()
         finally:
-            if not keep_connection:
-                await self.disconnect()
-            else:
-                _LOGGER.warning("You are using keep_connection parameter of get method. It will be removed in v2.0.0")
-                self.__connections_count -= 1
+            await self.disconnect()
 
         self._decode_response(response)
 
     @final
-    async def get(self, keep_connection: bool = False, skip_update: bool = False) -> dict:
+    async def get(self, skip_update: bool = False) -> dict:
         """
         Report current breezer state
         :param skip_update: may we skip requesting data from breezer or not
-        :param keep_connection: should we keep connection to device or disconnect after getting data
         :return:
           dictionary with device state
         """
@@ -203,7 +197,7 @@ class Tion:
             _LOGGER.debug(f"Skipping getting state from breezer because skip_update={skip_update} and "
                           f"have_breezer_state={self.have_breezer_state}")
         else:
-            await self.get_state_from_breezer(keep_connection)
+            await self.get_state_from_breezer()
         common = self.__generate_common_json()
         model_specific_data = self._generate_model_specific_json()
 
