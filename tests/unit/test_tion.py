@@ -2,7 +2,7 @@ import time
 import pytest
 import unittest
 import unittest.mock as mock
-import bluepy
+from bleak import exc
 
 import tion_btle.tion
 from tion_btle.tion import tion
@@ -13,67 +13,51 @@ from tion_btle.s4 import S4
 from tion_btle.tion import retry, MaxTriesExceededError
 
 
-class retryTests(unittest.TestCase):
+@pytest.mark.parametrize(
+    "retries, repeats, succeed_run, t_delay",
+    [
+        pytest.param(0, 1, 0, 0, id="Succeed after first attempt with no retry"),
+        pytest.param(1, 1, 0, 0, id="Succeed after first attempt with retry"),
+        pytest.param(5, 4, 3, 0, id="Succeed after first 3rd attempt with 5 retry"),
+        pytest.param(1, 2, 3, 0, id="Fail after one retry"),
+        pytest.param(2, 2, 1, 2, id="Delay between retries"),
+    ]
+)
+def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int):
+    class TestRetry:
+        count = 0
+
+        @retry(retries=retries, delay=t_delay)
+        def a(self, _succeed_run: int = 0):
+            if self.count <= _succeed_run:
+                self.count += 1
+                if self.count - 1 == _succeed_run:
+                    return "expected_result"
+
+            raise exc.BleakError
+
+    i = TestRetry()
+    start = time.time()
+
+    if succeed_run < repeats:
+        assert i.a(_succeed_run=succeed_run) == "expected_result"
+    else:
+        with pytest.raises(MaxTriesExceededError) as c:
+            i.a(_succeed_run=succeed_run)
+
+    end = time.time()
+
+    assert i.count == repeats
+    assert end - start >= t_delay
+
+
+class TestLogLevels:
     def setUp(self):
         self.count = 0
         tion_btle.tion._LOGGER.debug = mock.MagicMock(name='method')
         tion_btle.tion._LOGGER.info = mock.MagicMock(name='method')
         tion_btle.tion._LOGGER.warning = mock.MagicMock(name='method')
         tion_btle.tion._LOGGER.critical = mock.MagicMock(name='method')
-
-    def test_success_single_try(self):
-        @retry(retries=0)
-        def a():
-            self.count += 1
-            return "expected_result"
-        self.assertEqual(a(), "expected_result")
-        self.assertEqual(self.count, 1)
-
-    def test_success_two_tries(self):
-        @retry(retries=1)
-        def a():
-            self.count += 1
-            return "expected_result"
-        self.assertEqual(a(), "expected_result")
-        self.assertEqual(self.count, 1)
-
-    def test_failure_two_tries(self):
-        @retry(retries=1)
-        def a():
-            self.count += 1
-            raise Exception()
-        try:
-            a()
-            self.fail()
-        except MaxTriesExceededError:
-            self.assertEqual(self.count, 2)
-
-    def test_success_after_third_try(self):
-        @retry(retries=5)
-        def a():
-            self.count += 1
-            if self.count == 3:
-                return "expected_result"
-            else:
-                raise Exception()
-        self.assertEqual(a(), "expected_result")
-        self.assertEqual(self.count, 3)
-
-    def test_delay(self):
-        t_delay = 2
-
-        @retry(retries=2, delay=t_delay)
-        def a():
-            self.count += 1
-            if self.count == 2:
-                return "expected_result"
-            else:
-                raise Exception()
-
-        start = time.time()
-        a()
-        end = time.time()
-        self.assertGreaterEqual(end-start, t_delay)
 
     def test_debug_log_level(self):
         @retry(retries=0)
@@ -133,14 +117,6 @@ class retryTests(unittest.TestCase):
             except MaxTriesExceededError:
                 pass
             log_mock.assert_called()
-
-    def test_MaxTriesExceededError(self):
-        @retry(retries=0)
-        def e():
-            raise Exception
-
-        with self.assertRaises(MaxTriesExceededError) as c:
-            e()
 
 
 @pytest.mark.parametrize(
