@@ -6,10 +6,10 @@ from bleak import exc
 
 import tion_btle.tion
 from tion_btle.tion import Tion
-from tion_btle.lite import LiteFamily
-from tion_btle.lite import Lite
-from tion_btle.s3 import S3
-from tion_btle.s4 import S4
+from tion_btle.lite import TionLiteFamily
+from tion_btle.lite import TionLite
+from tion_btle.s3 import TionS3
+from tion_btle.s4 import TionS4
 from tion_btle.tion import retry, MaxTriesExceededError
 
 
@@ -115,7 +115,7 @@ def test_decode_temperature(raw_temperature, result):
 
 @pytest.mark.parametrize(
     "instance",
-    [Tion, LiteFamily, Lite, S3, S4]
+    [Tion, TionLiteFamily, TionLite, TionS3, TionS4]
 )
 def test_mac(instance):
     target = 'foo'
