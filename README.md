@@ -14,6 +14,8 @@ Use class according to the breezer type. For example for Tion S3 you should use
 from tion_btle import S3 as Breezer
 ```
 # Documentation
+## Few notes about asyncio
+`get`, `set`, `pair`, `connect` and `disconnect` methods are async. Use it in async loop:
 ## init
 You must provide device's MAC-address to the constructor
 ```python
@@ -25,7 +27,7 @@ device = Breezer(mac)
 Use `get()` function to get current state of the breezer.
 It will return json with all available attributes.
 ```python
-print(device.get())
+print(await device.get())
 ```
 Result will depend on the breezer model
 #### All models
@@ -59,7 +61,7 @@ Result will depend on the breezer model
 ## set
 Use `set({parameter1: value, parameter2: value, ...})` to set breezer parameters that may be changed. It depends on the breezer model.
 ```python
-device.set({
+await device.set({
     'fan_speed': 4,
     'heater_temp': 21, 
     'heater': 'on' 
@@ -80,5 +82,5 @@ device.set({
 ## pair
 To pair device turn breezer to pairing mode and call
 ```python
-device.pair()
+await device.pair()
 ```
