@@ -486,14 +486,6 @@ class Tion:
         """
         raise NotImplementedError()
 
-    @property
-    @abc.abstractmethod
-    def _dummy_data(self) -> bytearray:
-        """
-        full response from breezer for test, as it was collected from packages: without deader and CRC
-        """
-        raise NotImplementedError()
-
     async def _get_data_from_breezer(self) -> bytearray:
         """ Get byte array with breezer response on state request
 
