@@ -5,7 +5,7 @@ import unittest.mock as mock
 from bleak import exc
 
 import tion_btle.tion
-from tion_btle.tion import tion
+from tion_btle.tion import Tion
 from tion_btle.lite import LiteFamily
 from tion_btle.lite import Lite
 from tion_btle.s3 import S3
@@ -110,12 +110,12 @@ class TestLogLevels:
     ]
 )
 def test_decode_temperature(raw_temperature, result):
-    assert tion.decode_temperature(raw_temperature) == result
+    assert Tion.decode_temperature(raw_temperature) == result
 
 
 @pytest.mark.parametrize(
     "instance",
-    [tion, LiteFamily, Lite, S3, S4]
+    [Tion, LiteFamily, Lite, S3, S4]
 )
 def test_mac(instance):
     target = 'foo'

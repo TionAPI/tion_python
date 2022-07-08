@@ -1,6 +1,6 @@
 import pytest
 
-from tion_btle.tion import tion as Tion
+from tion_btle.tion import Tion
 
 
 @pytest.mark.parametrize(
