@@ -105,17 +105,20 @@ class TionLiteFamily(Tion):
             for j in range(0, len(lst), n):
                 yield lst[j:j + n]
 
+        request.pop()
+
         if len(request) < 20:
-            request[0] = self.SINGLE_PACKET_ID
+            request.insert(0, self.SINGLE_PACKET_ID)
             return [request]
 
-        request[0] = self.FIRST_PACKET_ID
-        result = list(chunks(request, 20))
+        result = list(chunks(request, 19))
 
-        for i in range(1, len(result)):
-            if i == len(result)-1:
+        for i in range(0, len(result)):
+            if i == 0:  # First packet
+                result[i].insert(0, self.FIRST_PACKET_ID)
+            elif i == len(result)-1:  # Last packet
                 result[i].insert(0, self.END_PACKET_ID)
-            else:
+            else:  # Middle packets
                 result[i].insert(0, self.MIDDLE_PACKET_ID)
 
         return result
