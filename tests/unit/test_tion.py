@@ -1,8 +1,8 @@
-import bluepy
 import time
 import pytest
 import unittest.mock as mock
 
+from bleak import exc
 
 import tion_btle.tion
 from tion_btle.tion import tion
@@ -34,7 +34,7 @@ def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int):
                 if self.count - 1 == _succeed_run:
                     return "expected_result"
 
-            raise bluepy.btle.BTLEDisconnectError
+            raise exc.BleakError
 
     i = TestRetry()
     start = time.time()
@@ -52,6 +52,8 @@ def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int):
 
 
 class TestLogLevels:
+    count = 0
+
     def setUp(self):
         self.count = 0
         tion_btle.tion._LOGGER.debug = mock.MagicMock(name='method')
@@ -71,32 +73,13 @@ class TestLogLevels:
             log_mock.warning.assert_not_called()
             log_mock.critical.assert_not_called()
 
-    def test_info_log_level(self):
-        """only debug and info messages if we have just BTLEDisconnectError and BTLEInternalError"""
-        @retry(retries=1)
-        def info(_e):
-            if self.count == 0:
-                self.count += 1
-                raise _e(message="foo")
-            else:
-                pass
-
-        for e in (bluepy.btle.BTLEDisconnectError, bluepy.btle.BTLEInternalError):
-            self.count = 0
-            with self.subTest(exception=e):
-                with mock.patch('tion_btle.tion._LOGGER') as log_mock:
-                    info(e)
-                    log_mock.info.assert_called()
-                    log_mock.warning.assert_not_called()
-                    log_mock.critical.assert_not_called()
-
     def test_warning_log_level(self):
         """Make sure that we have warnings for exception, but have no critical if all goes well finally"""
         @retry(retries=1)
         def warning():
             if self.count == 0:
                 self.count += 1
-                raise Exception
+                raise exc.BleakError
             else:
                 pass
 
@@ -109,7 +92,7 @@ class TestLogLevels:
         """Make sure that we have message at critical level if all goes bad"""
         @retry(retries=0)
         def critical():
-            raise Exception
+            raise exc.BleakError
 
         with mock.patch('tion_btle.tion._LOGGER.critical') as log_mock:
             try:
