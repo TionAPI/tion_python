@@ -131,7 +131,6 @@ class tion(TionDummy):
         self._state: bool = False
         self._heater: bool = False
         self._sound: bool = False
-        self._heating: bool = False
         self._filter_remain: float = 0.0
         self._error_code: int = 0
         self.__failed_connects: int = 0
@@ -209,35 +208,16 @@ class tion(TionDummy):
             "model": self.model,
         }
 
-    def __detect_heating_state(self,
-                               in_temp: int = None,
-                               out_temp: int = None,
-                               heater_temp: int = None,
-                               heater: str = None) -> None:
-        """
-        Tries to guess is heater working right now
-        :param in_temp: air intake temperature
-        :param out_temp: ait outtake temperature
-        :param heater_temp: target temperature for heater
-        :param heater: heater state
-        :return: None
-        """
-        if in_temp is None:
-            in_temp = self.in_temp
-        if out_temp is None:
-            out_temp = self.out_temp
-        if heater_temp is None:
-            heater_temp = self.heater_temp
-        if heater is None:
-            heater = self.heater
+    @property
+    def heating(self) -> str:
+        """Tries to guess is heater working right now."""
+        if self.heater == "off":
+            return "off"
 
-        if heater == "off":
-            self.heating = "off"
-        else:
-            if heater_temp - in_temp > 3 and out_temp > in_temp:
-                self.heating = "on"
-            else:
-                self.heating = "off"
+        if self.heater_temp - self.in_temp > 3 and self.out_temp > self.in_temp:
+            return "on"
+
+        return "off"
 
     def get_state_from_breezer(self, keep_connection: bool = False) -> None:
         """
@@ -257,7 +237,6 @@ class tion(TionDummy):
                 self.__connections_count -= 1
 
         self._decode_response(response)
-        self.__detect_heating_state()
 
     def get(self, keep_connection: bool = False, skip_update: bool = False) -> dict:
         """
@@ -508,14 +487,6 @@ class tion(TionDummy):
     @property
     def filter_remain(self) -> float:
         return self._filter_remain
-
-    @property
-    def heating(self) -> str:
-        return self._decode_state(self._heating)
-
-    @heating.setter
-    def heating(self, new_state: str):
-        self._heating = self._encode_state(new_state)
 
     @property
     def mode(self):
