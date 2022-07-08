@@ -107,16 +107,16 @@ class TionLiteFamily(Tion):
 
         if len(request) < 20:
             request[0] = self.SINGLE_PACKET_ID
-            result = [request]
-        else:
-            request[0] = self.FIRST_PACKET_ID
-            result = list(chunks(request, 20))
+            return [request]
 
-            for i in range(1, len(result)):
-                if i == len(result)-1:
-                    result[i].insert(0, self.END_PACKET_ID)
-                else:
-                    result[i].insert(0, self.MIDDLE_PACKET_ID)
+        request[0] = self.FIRST_PACKET_ID
+        result = list(chunks(request, 20))
+
+        for i in range(1, len(result)):
+            if i == len(result)-1:
+                result[i].insert(0, self.END_PACKET_ID)
+            else:
+                result[i].insert(0, self.MIDDLE_PACKET_ID)
 
         return result
 
