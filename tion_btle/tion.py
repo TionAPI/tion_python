@@ -250,6 +250,7 @@ class Tion:
             _LOGGER.debug("Will write %s", encoded_request)
             await self._send_request(encoded_request)
             self._set_internal_state_from_request(new_settings)
+            await self._get_data_from_breezer()
         finally:
             await self.disconnect()
 
@@ -508,6 +509,8 @@ class Tion:
         if self.__connections_count <= 0:
             await self._disconnect()
             self.have_breezer_state = False
+            while self._delegation.haveNewData:
+                _LOGGER.debug(f"Cleaning data in disconnect: {self._delegation.data=}")
 
     @property
     @abc.abstractmethod
