@@ -1,5 +1,6 @@
 import abc
 import asyncio
+import inspect
 import logging
 import time
 from typing import Callable, List, final
@@ -17,12 +18,14 @@ class MaxTriesExceededError(Exception):
 
 def retry(retries: int = 2, delay: int = 0):
     def decor(f: Callable):
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs):
             last_info_exception = None
             last_warning_exception = None
             for i in range(retries+1):
                 try:
                     _LOGGER.debug("Trying %d/%d: %s(args=%s,kwargs=%s)", i, retries, f.__name__, args, kwargs)
+                    if inspect.iscoroutinefunction(f):
+                        return await f(*args, **kwargs)
                     return f(*args, **kwargs)
                 except exc.BleakError as _e:
                     next_message = "Will try again" if i < retries else "Will not try again"
@@ -30,7 +33,7 @@ def retry(retries: int = 2, delay: int = 0):
                     last_warning_exception = _e
                     pass
                 if delay > 0:
-                    time.sleep(delay)
+                    await asyncio.sleep(delay)
             else:
                 _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
                 if _LOGGER.level > logging.INFO and last_info_exception is not None:
