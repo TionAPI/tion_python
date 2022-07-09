@@ -2,7 +2,7 @@ import abc
 import asyncio
 import inspect
 import logging
-import time
+from asyncio import Semaphore
 from typing import Callable, List, final
 from time import localtime, strftime
 
@@ -98,6 +98,7 @@ class Tion:
         self.__connections_count: int = 0
         self.__notifications_enabled: bool = False
         self.have_breezer_state: bool = False
+        self._semaphore = Semaphore(1)
 
     @abc.abstractmethod
     async def _send_request(self, request: bytearray):
@@ -492,7 +493,8 @@ class Tion:
 
         if self.__connections_count == 0:
             self.have_breezer_state = False
-            await self._connect()
+            async with self._semaphore:
+                await self._connect()
 
         self.__connections_count += 1
 
