@@ -53,6 +53,7 @@ class TionDelegation:
     def handleNotification(self, handle: int, data: bytearray):
         self._data.append(data)
         _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
+        _LOGGER.debug(f"{self._data=}")
 
     @property
     def data(self) -> bytearray:
@@ -280,7 +281,6 @@ class Tion:
     @property
     def connection_status(self):
         status = "connected" if self._btle.is_connected else "disc"
-        _LOGGER.debug("connection_status is %s" % status)
         return status
 
     @final
@@ -292,7 +292,7 @@ class Tion:
 
     @final
     async def _connect(self, need_notifications: bool = True):
-        _LOGGER.debug("Connecting")
+        _LOGGER.debug(f"Connecting. {self.connection_status=}.")
         if self.connection_status == "disc":
             try:
                 await self._try_connect()
@@ -304,16 +304,19 @@ class Tion:
                 await self._enable_notifications()
             else:
                 _LOGGER.debug("Notifications was not requested")
+        _LOGGER.debug(f"_connect done. {self.connection_status=}.")
 
     @final
     async def _disconnect(self):
+        _LOGGER.debug(f"Disconnecting. {self.connection_status=}.")
         if self.connection_status != "disc":
             await self._btle.disconnect()
+        _LOGGER.debug(f"_disconnect done. {self.connection_status=}")
 
     @final
     @retry(retries=3)
     async def _try_write(self, request: bytearray):
-        _LOGGER.debug("Writing %s to %s", bytes(request).hex(), self.uuid_write)
+        _LOGGER.debug(f"Writing {bytes(request).hex()} to {self.uuid_write}, {self.connection_status=}")
         return await self._btle.write_gatt_char(
             self.uuid_write,
             request,
@@ -322,7 +325,7 @@ class Tion:
 
     @final
     async def _enable_notifications(self):
-        _LOGGER.debug("Enabling notification")
+        _LOGGER.debug(f"Enabling notification. {self.connection_status=}")
         try:
             await self._btle.start_notify(self.uuid_notify, self._delegation.handleNotification)
         except exc.BleakError as e:
@@ -330,6 +333,7 @@ class Tion:
             raise e
 
         self.__notifications_enabled = True
+        _LOGGER.debug(f"_enable_notifications done")
         return
 
     @final
