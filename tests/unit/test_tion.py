@@ -23,7 +23,7 @@ from tion_btle.tion import retry, MaxTriesExceededError
         pytest.param(2, 2, 1, 2, id="Delay between retries"),
     ]
 )
-def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int):
+async def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int):
     class TestRetry:
         count = 0
 
@@ -61,22 +61,24 @@ class TestLogLevels:
         tion_btle.tion._LOGGER.warning = mock.MagicMock(name='method')
         tion_btle.tion._LOGGER.critical = mock.MagicMock(name='method')
 
-    def test_debug_log_level(self):
+    @pytest.mark.asyncio
+    async def test_debug_log_level(self):
         @retry(retries=0)
-        def debug():
+        async def debug():
             pass
 
         with mock.patch('tion_btle.tion._LOGGER') as log_mock:
-            debug()
+            await debug()
             log_mock.debug.assert_called()
             log_mock.info.assert_not_called()
             log_mock.warning.assert_not_called()
             log_mock.critical.assert_not_called()
 
-    def test_warning_log_level(self):
+    @pytest.mark.asyncio
+    async def test_warning_log_level(self):
         """Make sure that we have warnings for exception, but have no critical if all goes well finally"""
         @retry(retries=1)
-        def warning():
+        async def warning():
             if self.count == 0:
                 self.count += 1
                 raise exc.BleakError
@@ -84,19 +86,20 @@ class TestLogLevels:
                 pass
 
         with mock.patch('tion_btle.tion._LOGGER') as log_mock:
-            warning()
+            await warning()
             log_mock.warning.assert_called()
             log_mock.critical.assert_not_called()
 
-    def test_critical_log_level(self):
+    @pytest.mark.asyncio
+    async def test_critical_log_level(self):
         """Make sure that we have message at critical level if all goes bad"""
         @retry(retries=0)
-        def critical():
+        async def critical():
             raise exc.BleakError
 
         with mock.patch('tion_btle.tion._LOGGER.critical') as log_mock:
             try:
-                critical()
+                await critical()
             except MaxTriesExceededError:
                 pass
             log_mock.assert_called()
