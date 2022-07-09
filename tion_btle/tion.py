@@ -27,7 +27,7 @@ def retry(retries: int = 2, delay: int = 0):
                     if inspect.iscoroutinefunction(f):
                         return await f(*args, **kwargs)
                     return f(*args, **kwargs)
-                except exc.BleakError as _e:
+                except (exc.BleakError, exc.BleakDBusError) as _e:
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
                     last_warning_exception = _e
