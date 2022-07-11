@@ -32,7 +32,8 @@ def test_generator(target_length):
 )
 def test_split_command(command: bytearray):
     tion = TionLiteFamily(mac="")
-    splitted = tion.split_command(request=command)
+    splitted = tion.split_command(request=command.copy())
+    joined = bytearray()
 
     for i in range(len(splitted)):
         assert len(splitted[i]) <= 20
@@ -45,6 +46,8 @@ def test_split_command(command: bytearray):
             assert splitted[i][0] == TionLiteFamily.END_PACKET_ID
         else:
             assert splitted[i][0] == TionLiteFamily.MIDDLE_PACKET_ID
+        joined += splitted[i][1:]
 
+    assert command[1:] == joined
 
 
