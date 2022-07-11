@@ -105,7 +105,7 @@ class TionLiteFamily(Tion):
             for j in range(0, len(lst), n):
                 yield lst[j:j + n]
 
-        request.pop()
+        request.pop(0)
 
         if len(request) < 20:
             request.insert(0, self.SINGLE_PACKET_ID)
