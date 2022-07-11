@@ -13,6 +13,7 @@ from tion_btle.s4 import TionS4
 from tion_btle.tion import retry, MaxTriesExceededError
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "retries, repeats, succeed_run, t_delay",
     [
@@ -40,10 +41,10 @@ async def test_retry(retries: int, repeats: int, succeed_run: int, t_delay: int)
     start = time.time()
 
     if succeed_run < repeats:
-        assert i.a(_succeed_run=succeed_run) == "expected_result"
+        assert await i.a(_succeed_run=succeed_run) == "expected_result"
     else:
         with pytest.raises(MaxTriesExceededError) as c:
-            i.a(_succeed_run=succeed_run)
+            await i.a(_succeed_run=succeed_run)
 
     end = time.time()
 
