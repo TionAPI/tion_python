@@ -289,7 +289,7 @@ class Tion:
     async def _try_connect(self) -> bool:
         """Tries to connect with retries"""
 
-        return await self._btle.connect()
+        return await self._btle.connect(timeout=5.0)
 
     @final
     async def _connect(self, need_notifications: bool = True):
