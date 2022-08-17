@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import asyncio
 import inspect
@@ -8,6 +10,7 @@ from time import localtime, strftime
 
 from bleak import BleakClient
 from bleak import exc
+from bleak.backends.device import BLEDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,9 +79,9 @@ class Tion:
     uuid_notify: str = ""
     uuid_write: str = ""
 
-    def __init__(self, mac: str):
+    def __init__(self, mac: str | BLEDevice):
         self._mac = mac
-        self._btle: BleakClient = BleakClient(self.mac)
+        self._btle: BleakClient = BleakClient(mac)
         self._delegation = TionDelegation()
         self._fan_speed = 0
         self._model: str = self.__class__.__name__
@@ -257,7 +260,7 @@ class Tion:
     @final
     @property
     def mac(self):
-        return self._mac
+        return self._mac.address if isinstance(self._mac, BLEDevice) else self._mac
 
     @staticmethod
     def decode_temperature(raw: int) -> int:
