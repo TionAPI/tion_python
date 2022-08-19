@@ -564,3 +564,10 @@ class Tion:
             raise TionException("_get_data_from_breezer", "Could not get breezer state")
 
         return result
+
+    @final
+    def update_btle_device(self, new_device: str | BLEDevice):
+        if new_device is None:
+            _LOGGER.info(f"Skipping update due to {new_device= }!")
+            return
+        self._btle = BleakClient(new_device)
