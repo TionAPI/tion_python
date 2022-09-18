@@ -37,14 +37,15 @@ def retry(retries: int = 2, delay: int = 0):
                     pass
                 if delay > 0:
                     await asyncio.sleep(delay)
-            else:
-                _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
-                if _LOGGER.level > logging.INFO and last_info_exception is not None:
-                    _LOGGER.critical(f"Last exception was {last_info_exception}")
-                elif _LOGGER.level > logging.WARNING and last_warning_exception is not None:
-                    _LOGGER.critical(f"Last exception was {last_warning_exception}")
 
-                raise MaxTriesExceededError
+            _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
+            if _LOGGER.level > logging.INFO and last_info_exception is not None:
+                _LOGGER.critical(f"Last exception was {last_info_exception}")
+            elif _LOGGER.level > logging.WARNING and last_warning_exception is not None:
+                _LOGGER.critical(f"Last exception was {last_warning_exception}")
+
+            raise MaxTriesExceededError
+
         return wrapper
     return decor
 
