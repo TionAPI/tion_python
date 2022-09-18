@@ -34,7 +34,7 @@ def retry(retries: int = 2, delay: int = 0):
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
                     last_warning_exception = _e
-                    pass
+
                 if delay > 0:
                     await asyncio.sleep(delay)
 
