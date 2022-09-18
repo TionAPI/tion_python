@@ -34,9 +34,8 @@ def retry(retries: int = 2, delay: int = 0):
                     next_message = "Will try again" if i < retries else "Will not try again"
                     _LOGGER.warning("Got exception: %s. %s", str(_e), next_message)
                     last_warning_exception = _e
-
-                if delay > 0:
-                    await asyncio.sleep(delay)
+                    if delay > 0:
+                        await asyncio.sleep(delay)
 
             _LOGGER.critical("Retry limit (%d) exceeded for %s(%s, %s)", retries, f.__name__, args, kwargs)
             if _LOGGER.level > logging.INFO and last_info_exception is not None:
