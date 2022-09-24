@@ -82,6 +82,7 @@ class Tion:
     def __init__(self, mac: str | BLEDevice):
         self._mac = mac
         self._btle: BleakClient = BleakClient(mac)
+        self._next_btle_device: BleakClient | None = None
         self._delegation = TionDelegation()
         self._fan_speed = 0
         self._model: str = self.__class__.__name__
@@ -291,7 +292,7 @@ class Tion:
     @retry(retries=1, delay=2)
     async def _try_connect(self) -> bool:
         """Tries to connect with retries"""
-
+        self.set_new_btle_device()
         return await self._btle.connect(timeout=5.0)
 
     @final
@@ -315,6 +316,8 @@ class Tion:
         _LOGGER.debug(f"Disconnecting. {self.connection_status=}.")
         if self.connection_status != "disc":
             await self._btle.disconnect()
+            self.set_new_btle_device()
+
         _LOGGER.debug(f"_disconnect done. {self.connection_status=}")
 
     @final
@@ -570,4 +573,12 @@ class Tion:
         if new_device is None:
             _LOGGER.info(f"Skipping update due to {new_device= }!")
             return
-        self._btle = BleakClient(new_device)
+        self._next_btle_device = new_device
+
+    @final
+    def set_new_btle_device(self):
+        if self._next_btle_device is not None:
+            async with self._semaphore:
+                _LOGGER.debug("Updating _btle instance")
+                self._btle = BleakClient(self._next_btle_device)
+                self._next_btle_device = None
