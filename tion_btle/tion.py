@@ -316,7 +316,8 @@ class Tion:
         _LOGGER.debug(f"Disconnecting. {self.connection_status=}.")
         if self.connection_status != "disc":
             await self._btle.disconnect()
-            self.set_new_btle_device()
+            async with self._semaphore:
+                self.set_new_btle_device()
 
         _LOGGER.debug(f"_disconnect done. {self.connection_status=}")
 
@@ -578,7 +579,6 @@ class Tion:
     @final
     def set_new_btle_device(self):
         if self._next_btle_device is not None:
-            async with self._semaphore:
-                _LOGGER.debug("Updating _btle instance")
-                self._btle = BleakClient(self._next_btle_device)
-                self._next_btle_device = None
+            _LOGGER.debug("Updating _btle instance")
+            self._btle = BleakClient(self._next_btle_device)
+            self._next_btle_device = None
