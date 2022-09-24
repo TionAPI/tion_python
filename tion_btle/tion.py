@@ -579,6 +579,6 @@ class Tion:
     @final
     def set_new_btle_device(self):
         if self._next_btle_device is not None:
-            _LOGGER.debug("Updating _btle instance")
+            _LOGGER.debug(f"Updating _btle instance from {self._btle} to {self._next_btle_device}")
             self._btle = BleakClient(self._next_btle_device)
             self._next_btle_device = None
