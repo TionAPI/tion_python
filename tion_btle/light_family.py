@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import abc
 import logging
 from random import randrange
 from typing import final, List
+
+from bleak.backends.device import BLEDevice
 
 if __package__ == "":
     from tion_btle.tion import Tion
@@ -27,7 +31,7 @@ class TionLiteFamily(Tion):
     END_PACKET_ID = 0xc0
     MAGIC_NUMBER: int = 0x3a  # 58
 
-    def __init__(self, mac: str):
+    def __init__(self, mac: str | BLEDevice):
         super().__init__(mac)
         self._data: bytearray = bytearray()
         self._crc: bytearray = bytearray()

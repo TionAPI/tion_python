@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import logging
+
+from bleak.backends.device import BLEDevice
 
 if __package__ == "":
     from tion_btle.tion import TionException
@@ -12,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class TionS4(TionLiteFamily):
-    def __init__(self, mac: str):
+    def __init__(self, mac: str | BLEDevice):
         super().__init__(mac)
 
         self.modes = ['outside', 'recirculation']

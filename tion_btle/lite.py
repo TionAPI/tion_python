@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import logging
+
+from bleak.backends.device import BLEDevice
 
 if __package__ == "":
     from tion_btle.tion import TionException
@@ -13,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class TionLite(TionLiteFamily):
 
-    def __init__(self, mac: str):
+    def __init__(self, mac: str | BLEDevice):
         super().__init__(mac)
         self._package_size: bytearray = bytearray()
         self._command_type: bytearray = bytearray()

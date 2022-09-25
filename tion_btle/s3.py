@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import logging
+
+from bleak.backends.device import BLEDevice
 
 if __package__ == "":
     from tion_btle.tion import Tion, TionException
@@ -25,7 +29,7 @@ class TionS3(Tion):
     command_REQUEST_PARAMS = 1
     command_SET_PARAMS = 2
 
-    def __init__(self, mac: str):
+    def __init__(self, mac: str | BLEDevice):
         super().__init__(mac)
 
         # S3-specific properties
