@@ -55,7 +55,7 @@ class TionDelegation:
 
     def handleNotification(self, handle: int, data: bytearray):
         self._data.append(data)
-        _LOGGER.debug("Got data in %d response %s", handle, bytes(data).hex())
+        _LOGGER.debug(f"Got data in {handle} response {bytes(data).hex()}")
         _LOGGER.debug(f"{self._data=}")
 
     @property
